@@ -313,8 +313,71 @@ class BankStatementImport < Import
   end
 
   def parse_statement
+    # Try to use rupi-engine API first (keeps proprietary logic separate)
+    if use_rupi_engine?
+      Rails.logger.info("[BankStatementImport] Calling rupi-engine API for bank: #{bank_name}")
+      
+      response = RupiEngine::Client.parse_statement(
+        statement_file,
+        bank_name: bank_name,
+        password: effective_password
+      )
+
+      if response.success?
+        Rails.logger.info("[BankStatementImport] rupi-engine returned #{response.transaction_count} transactions")
+        return format_api_response(response)
+      else
+        # Handle specific error types
+        case response.error_type
+        when "password_required"
+          raise BankStatementParser::PasswordRequiredError, response.error_message
+        when "connection_error", "timeout"
+          # Fallback to local parser if API is unavailable
+          Rails.logger.warn("[BankStatementImport] rupi-engine unavailable, falling back to local parser")
+          return parse_statement_locally
+        else
+          raise BankStatementParser::ParseError, response.error_message
+        end
+      end
+    else
+      # Use local parser if rupi-engine is disabled or not configured
+      parse_statement_locally
+    end
+  end
+
+  # Parse using local parser (fallback or development mode)
+  def parse_statement_locally
     parser = parser_class.new(statement_file, password: effective_password)
     parser.parse
+  end
+
+  # Format API response to match expected structure
+  def format_api_response(response)
+    transactions = response.transactions.map do |txn|
+      {
+        date: parse_transaction_date(txn["date"]),
+        amount: BigDecimal(txn["amount"].to_s),
+        description: txn["description"],
+        notes: txn["notes"]
+      }
+    end
+    transactions
+  end
+
+  # Parse date from API response (handles various formats)
+  def parse_transaction_date(date_str)
+    return nil if date_str.blank?
+    Date.parse(date_str)
+  rescue ArgumentError
+    nil
+  end
+
+  # Determine whether to use rupi-engine API
+  def use_rupi_engine?
+    # Use rupi-engine if URL is configured
+    # In development, defaults to localhost:4000
+    # In production, should be set to the actual rupi-engine URL
+    ENV["RUPI_ENGINE_URL"].present? || Rails.env.development?
   end
 
   def parser_class
