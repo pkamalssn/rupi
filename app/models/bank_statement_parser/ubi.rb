@@ -66,6 +66,7 @@ module BankStatementParser
 
         debit = parse_amount(row[column_map[:debit]]) if column_map[:debit]
         credit = parse_amount(row[column_map[:credit]]) if column_map[:credit]
+        balance = parse_amount(row[column_map[:balance]]) if column_map[:balance]
         
         amount = if debit && debit != 0
           -debit.abs
@@ -81,70 +82,146 @@ module BankStatementParser
           date: date,
           amount: amount,
           description: description.presence || "UBI Transaction",
-          notes: "Imported from Union Bank of India statement"
+          notes: "Imported from Union Bank of India statement",
+          _balance: balance
         }
       end
 
+      # Balance-chain verification
+      verify_and_fix_polarity(transactions)
+      
+      # Cleanup
+      transactions.each { |t| t.delete(:_balance) }
+      
       transactions
     end
 
     def parse_transactions_from_text(text)
       transactions = []
       lines = text.split("\n")
+      last_balance = nil
+      
+      # Extract metadata
+      if match = text.match(/Opening.*?Balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:opening_balance] = parse_amount(match[1])
+      end
+      if match = text.match(/Closing.*?Balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:closing_balance] = parse_amount(match[1])
+      end
 
       lines.each do |line|
-        # UBI formats: 
-        # "01-01-2024  Description  1000.00 Dr  50000.00"
-        # "01/01/2024  Description  1000.00  Cr  51000.00"
-        # "01-Jan-2024  Description  1000.00  51000.00"
+        line = line.strip
+        next if line.empty?
         
-        # Check for date patterns
-        next unless line.match?(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/) || 
-                    line.match?(/\d{1,2}[-\/][A-Za-z]{3}[-\/]\d{2,4}/)
+        # UBI format from PDF:
+        # "03-01-2025    S53520969              352102010053600:Int.Pd:01-10-2024 to 31-12-2024             56.0(Cr)     6748.04(Cr)"
+        # Date | Trans ID | Description | Amount(Dr/Cr) | Balance(Cr)
+        
+        # Check for date at start: DD-MM-YYYY
+        next unless match = line.match(/^(\d{2}-\d{2}-\d{4})\s+/)
         
         # Ignore header lines
-        next if line.match?(/Statement.*Date|Statement.*Period|Balance.*Brought|Page.*of/i)
+        next if line.match?(/Statement.*Date|Statement.*Period|Balance.*Brought|Page.*of|Date.*Transaction/i)
         
-        # Extract date
-        date_match = line.match(/(\d{1,2}[-\/][A-Za-z]{3}[-\/]\d{2,4})/) ||
-                     line.match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/)
-        next unless date_match
-        
-        date = parse_date(date_match[1])
+        date = parse_date(match[1])
         next unless date
         
-        # Extract amounts
-        amounts = line.scan(/([\d,]+\.?\d*)/).flatten.select { |a| a.match?(/\d/) && a.length > 2 }
-        next if amounts.empty?
+        # Rest of line after date
+        rest = line.sub(match[0], "").strip
         
-        # Check for Dr/Cr indicators
-        if dr_match = line.match(/([\d,]+\.?\d*)\s*(Dr|Debit)/i)
-          amount = -parse_amount(dr_match[1]).abs
-        elsif cr_match = line.match(/([\d,]+\.?\d*)\s*(Cr|Credit)/i)
-          amount = parse_amount(cr_match[1]).abs
-        else
-          amount = parse_amount(amounts.first)
-          # Infer from keywords
-          is_debit = line.downcase.match?(/withdrawal|neft\/|imps\/|upi\/|atm|debit/)
-          amount = -amount.abs if is_debit && amount
+        # Extract amounts with (Cr) or (Dr) indicators
+        # Pattern: 56.0(Cr) or 20000.0(Dr)
+        amount_matches = rest.scan(/([\d,]+\.?\d*)\((Cr|Dr)\)/i)
+        
+        next if amount_matches.empty?
+        
+        # Last match is typically the balance, first is the transaction amount
+        if amount_matches.length >= 2
+          amount_str, amount_type = amount_matches[0]
+          balance_str, _ = amount_matches.last
+          balance = parse_amount(balance_str)
+        elsif amount_matches.length == 1
+          # Only one amount found - could be just balance or amount
+          amount_str, amount_type = amount_matches[0]
+          balance = nil
         end
         
+        amount = parse_amount(amount_str)
         next unless amount && amount != 0
-
-        # Extract description
-        description = line.sub(date_match[0], "").strip
-        description = description.gsub(/([\d,]+\.?\d*)\s*(Dr|Cr|Debit|Credit)?/i, "").strip
+        
+        # Apply polarity based on Dr/Cr
+        if amount_type&.downcase == "dr"
+          amount = -amount.abs
+        else
+          amount = amount.abs
+        end
+        
+        # Extract description (remove amounts and transaction ID)
+        description = rest.gsub(/[\d,]+\.?\d*\((Cr|Dr)\)/i, "").strip
+        description = description.gsub(/^[A-Z]\d+\s+/, "")  # Remove transaction ID like S53520969
         description = clean_description(description)
-
+        
         transactions << {
           date: date,
           amount: amount,
           description: description.presence || "UBI Transaction",
-          notes: "Imported from Union Bank of India statement"
+          notes: "Imported from Union Bank of India statement",
+          _balance: balance
         }
+        
+        last_balance = balance if balance
       end
+      
+      # ==========================================
+      # BALANCE-CHAIN VERIFICATION (CHRONOLOGICAL)
+      # ==========================================
+      # UBI is chronological: transactions[0] is OLDEST
+      
+      verify_and_fix_polarity(transactions)
+      
+      # ==========================================
+      # METADATA DERIVATION
+      # ==========================================
+      if transactions.any?
+        # Opening: first transaction's balance - first amount
+        if @metadata[:opening_balance].nil? && transactions.first[:_balance]
+          first_txn = transactions.first
+          @metadata[:opening_balance] = (first_txn[:_balance] - first_txn[:amount]).round(2)
+        end
+        
+        # Closing: last transaction's balance
+        if @metadata[:closing_balance].nil? && transactions.last[:_balance]
+          @metadata[:closing_balance] = transactions.last[:_balance]
+        end
+      end
+      
+      # ==========================================
+      # CLEANUP
+      # ==========================================
+      transactions.each { |t| t.delete(:_balance) }
 
       transactions
+    end
+    
+    def verify_and_fix_polarity(transactions)
+      # Chronological order: each transaction builds on the previous
+      transactions.each_with_index do |txn, idx|
+        next if idx == 0
+        prev_txn = transactions[idx - 1]
+        next unless txn[:_balance] && prev_txn[:_balance]
+        
+        prev_balance = prev_txn[:_balance].to_f
+        curr_balance = txn[:_balance].to_f
+        raw_amount = txn[:amount].abs
+        
+        # Credit check: prev + amount = curr
+        if (prev_balance + raw_amount - curr_balance).abs < 1.0
+          txn[:amount] = raw_amount
+        # Debit check: prev - amount = curr
+        elsif (prev_balance - raw_amount - curr_balance).abs < 1.0
+          txn[:amount] = -raw_amount
+        end
+      end
     end
   end
 end

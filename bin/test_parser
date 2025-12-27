@@ -1,0 +1,136 @@
+#!/usr/bin/env ruby
+require_relative "../config/environment"
+
+def check_usage
+  if ARGV.length < 2
+    puts "Usage: bin/test_parser <bank_name> <file_path> [password]"
+    puts "Example: bin/test_parser Jupiter /path/to/statement.pdf"
+    exit 1
+  end
+end
+
+def run
+  check_usage
+  
+  bank_name = ARGV[0]
+  file_path = ARGV[1]
+  password = ARGV[2]
+
+  puts "==> Testing #{bank_name} parser on #{file_path}..."
+
+  unless File.exist?(file_path)
+    puts "Error: File not found: #{file_path}"
+    exit 1
+  end
+
+  # Mock file object that behaves like ActiveStorage attachment or File
+  file = File.open(file_path, "rb")
+  # Add necessary methods if needed by parsers
+  def file.filename; File.basename(path); end
+  def file.content_type; "application/pdf"; end 
+  if file_path.match?(/\.xlsx?$/i)
+     def file.content_type; "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"; end
+  end
+
+  parser_class = "BankStatementParser::#{bank_name}".constantize
+  parser = parser_class.new(file, password: password)
+  
+  start_time = Time.now
+  transactions = parser.parse
+  metadata = parser.respond_to?(:metadata) ? parser.metadata : {}
+  duration = Time.now - start_time
+
+  puts "\n==> Parsed #{transactions.count} transactions in #{duration.round(2)}s"
+  if metadata.any?
+    puts "==> Metadata: #{metadata.inspect}"
+  end
+  puts "\n"
+
+  if transactions.empty?
+    puts "No transactions found."
+    exit
+  end
+
+  # Display Transactions
+  puts sprintf("%-12s | %-12s | %-50s", "Date", "Amount", "Description")
+  puts "-" * 80
+  
+  total_credits = 0
+  total_debits = 0
+
+  transactions.first(10).each do |t|
+    puts sprintf("%-12s | %-12s | %-50s", t[:date], t[:amount], t[:description].truncate(48))
+  end
+  puts "... (showing first 10 only) ...\n" if transactions.count > 10
+
+  transactions.each do |t|
+    if t[:amount] > 0
+      total_credits += t[:amount]
+    else
+      total_debits += t[:amount]
+    end
+  end
+
+  puts "\n==> Summary"
+  puts "Total Credits: #{total_credits.round(2)}"
+  puts "Total Debits:  #{total_debits.round(2)}"
+  puts "Net Change:    #{(total_credits + total_debits).round(2)}"
+
+  puts "\n==> Balance Verification"
+  
+  # Extract raw text to find Opening/Closing Balance
+  if parser.respond_to?(:send)
+    # Hack to get text if parser stores it or we can re-read
+    # For now, let's just use the transactions sum and ask user
+  end
+
+  puts "Calculated Net Change from Transactions: #{(total_credits + total_debits).round(2)}"
+  
+  # Try to find Opening/Closing in PDF text if possible (Generic approach)
+  if file_path.end_with?(".pdf")
+    begin
+      require "pdf-reader"
+      reader = PDF::Reader.new(file_path)
+      full_text = ""
+      reader.pages.each { |p| full_text += p.text + "\n" }
+      
+      # Try to find closing balance
+      # Jupiter specific: 'Effective Available Balance      7327.11'
+      closing_match = full_text.scan(/Effective Available Balance.*?([\d,]+\.\d{2})/i).last
+      
+      # Jupiter specific: 'Opening Balance                  2198.33'
+      opening_match = full_text.scan(/Opening Balance\s+([\d,]+\.\d{2})/i).first
+      
+      # Fallback to generic
+      closing_match ||= full_text.scan(/Closing Balance.*?([\d,]+\.\d{2})/i).last
+      opening_match ||= full_text.scan(/Opening Balance.*?([\d,]+\.\d{2})/i).first
+      
+      if closing_match && opening_match
+        closing = closing_match[0].gsub(",", "").to_f
+        opening = opening_match[0].gsub(",", "").to_f
+        actual_change = closing - opening
+        
+        puts "Found Opening Balance: #{opening}"
+        puts "Found Closing Balance: #{closing}"
+        puts "Actual PDF Net Change: #{actual_change.round(2)}"
+        
+        diff = (actual_change - (total_credits + total_debits)).abs
+        if diff < 1.0
+          puts "\n✅ SUCCESS: Parsed data matches PDF balance exactly!"
+        else
+          puts "\n❌ WARNING: Parsed data deviates by #{diff.round(2)}"
+        end
+      else
+        puts "Could not auto-extract Opening/Closing balance from text."
+      end
+    rescue => e
+       puts "Error verifying balance: #{e.message}"
+    end
+  end
+  
+rescue => e
+  puts "\nERROR: #{e.message}"
+  puts e.backtrace.join("\n")
+end
+
+run

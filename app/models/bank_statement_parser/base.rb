@@ -9,11 +9,12 @@ module BankStatementParser
   class OCRError < StandardError; end
 
   class Base
-    attr_reader :file, :password
+    attr_reader :file, :password, :metadata
 
     def initialize(file, password: nil)
       @file = file
       @password = password
+      @metadata = {}
     end
 
     # Parse the statement and return an array of transaction hashes

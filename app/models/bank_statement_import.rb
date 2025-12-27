@@ -149,15 +149,74 @@ class BankStatementImport < Import
     SUPPORTED_CREDIT_CARDS.include?(bank_name)
   end
 
-  def import_transactions(transactions, mapped_account)
-    return if transactions.blank?
+  def import_transactions(parsed_data, mapped_account)
+    return if parsed_data.blank?
     
-    # Handle case where parser returns structured data
-    transactions = transactions[:transactions] if transactions.is_a?(Hash) && transactions[:transactions]
+    metadata = {}
+    transactions = parsed_data
+
+    # Handle structured data with metadata
+    if parsed_data.is_a?(Hash) && parsed_data[:transactions]
+      transactions = parsed_data[:transactions]
+      metadata = parsed_data[:metadata] || {}
+      # Merge top-level keys if any (legacy support)
+      metadata[:opening_balance] ||= parsed_data[:opening_balance]
+      metadata[:closing_balance] ||= parsed_data[:closing_balance]
+    end
     
     new_transactions = []
     updated_entries = []
     claimed_entry_ids = Set.new
+    
+    # =====================================================
+    # SMART BALANCE VERIFICATION - PRE-IMPORT CHECK
+    # =====================================================
+    
+    # For EXISTING accounts (not empty): Check if statement opening balance matches current balance
+    unless mapped_account.entries.empty?
+      if metadata[:opening_balance].present?
+        current_balance = mapped_account.balance.to_f
+        statement_opening = metadata[:opening_balance].to_f
+        balance_diff = (current_balance - statement_opening).abs
+        
+        if balance_diff > 1.0  # Allow ₹1 tolerance for rounding
+          # Log warning - statement might overlap or have gaps
+          Rails.logger.warn "⚠️ BALANCE CONTINUITY WARNING for #{mapped_account.name}:"
+          Rails.logger.warn "   Current Account Balance: #{current_balance}"
+          Rails.logger.warn "   Statement Opening Balance: #{statement_opening}"
+          Rails.logger.warn "   Difference: #{balance_diff}"
+          Rails.logger.warn "   This could indicate: overlapping statements, missing transactions, or statement gaps."
+          
+          # Store warning in import notes for user visibility
+          self.update_column(:notes, [notes, "Balance Warning: Statement opening (#{statement_opening}) differs from current balance (#{current_balance}) by #{balance_diff.round(2)}"].compact.join("\n")) rescue nil
+        else
+          Rails.logger.info "✓ Balance continuity verified for #{mapped_account.name}: Current=#{current_balance}, Opening=#{statement_opening}"
+        end
+      end
+    end
+    
+    # SMART FEATURE: Auto-Set Opening Balance for New Accounts
+    # If the account has no entries, and we know the opening balance from PDF
+    if mapped_account.entries.empty? && metadata[:opening_balance].present? && metadata[:opening_balance] > 0
+      # Create an Opening Balance entry
+      # Date: Use the date of the first transaction found, or today
+      first_txn_date = transactions.first&.dig(:date) || Date.today
+      
+      opening_txn = Transaction.new(
+        category: find_category("Opening Balance"), # Creates/Finds 'Opening Balance' category if needed
+        entry: Entry.new(
+          account: mapped_account,
+          date: first_txn_date,
+          amount: metadata[:opening_balance],
+          name: "Opening Balance",
+          currency: mapped_account.currency || family.currency,
+          notes: "Auto-detected Opening Balance from Import",
+          import: self
+        )
+      )
+      new_transactions << opening_txn
+      Rails.logger.info "Auto-creating Opening Balance of #{metadata[:opening_balance]} for #{mapped_account.name}"
+    end
 
     transactions.each_with_index do |txn_data, index|
       next unless txn_data.is_a?(Hash) && txn_data[:date] && txn_data[:amount]
@@ -204,7 +263,15 @@ class BankStatementImport < Import
     end
 
     # Bulk import new transactions
-    Transaction.import!(new_transactions, recursive: true) if new_transactions.any?
+    if new_transactions.any?
+      # We need to save manually to handle the Entry association properly if bulk import is tricky
+      # Or assume proper accepts_nested_attributes/autosave
+      # ActiveRecord-Import works if configured properly
+      # But Transaction + Entry is a nested creation.
+      # Safest to save sequentially for now, or use specialized bulk import logic
+      # Existing code used Transaction.import! recursive: true, which works for Rails 6+
+      Transaction.import!(new_transactions, recursive: true)
+    end
     
     # AI-powered categorization for uncategorized transactions
     # Collect IDs of transactions that don't have a category yet
@@ -214,6 +281,38 @@ class BankStatementImport < Import
         Transaction.where(id: uncategorized_transaction_ids, category_id: nil)
       )
     end
+    
+    # =====================================================
+    # SMART BALANCE VERIFICATION - POST-IMPORT CHECK
+    # =====================================================
+    
+    # Verify that final account balance matches statement's closing balance
+    if metadata[:closing_balance].present?
+      # Reload account to get fresh balance after import
+      mapped_account.reload
+      final_balance = mapped_account.balance.to_f
+      statement_closing = metadata[:closing_balance].to_f
+      reconciliation_diff = (final_balance - statement_closing).abs
+      
+      if reconciliation_diff <= 1.0  # Allow ₹1 tolerance
+        Rails.logger.info "✓ RECONCILIATION SUCCESS for #{mapped_account.name}:"
+        Rails.logger.info "   Final Account Balance: #{final_balance}"
+        Rails.logger.info "   Statement Closing Balance: #{statement_closing}"
+        Rails.logger.info "   All transactions imported correctly!"
+      else
+        Rails.logger.warn "⚠️ RECONCILIATION WARNING for #{mapped_account.name}:"
+        Rails.logger.warn "   Final Account Balance: #{final_balance}"
+        Rails.logger.warn "   Statement Closing Balance: #{statement_closing}"
+        Rails.logger.warn "   Difference: #{reconciliation_diff}"
+        Rails.logger.warn "   This could indicate: duplicate transactions, missing transactions, or rounding errors."
+        
+        # Store reconciliation info for user
+        self.update_column(:notes, [notes, "Reconciliation: Final balance (#{final_balance.round(2)}) differs from statement closing (#{statement_closing.round(2)}) by #{reconciliation_diff.round(2)}"].compact.join("\n")) rescue nil
+      end
+    end
+    
+    # Log import summary
+    Rails.logger.info "Import Complete: #{new_transactions.count} new, #{updated_entries.count} updated for #{mapped_account.name}"
   end
 
   def import_investment_data(parsed_data, mapped_account)
@@ -313,71 +412,14 @@ class BankStatementImport < Import
   end
 
   def parse_statement
-    # Try to use rupi-engine API first (keeps proprietary logic separate)
-    if use_rupi_engine?
-      Rails.logger.info("[BankStatementImport] Calling rupi-engine API for bank: #{bank_name}")
-      
-      response = RupiEngine::Client.parse_statement(
-        statement_file,
-        bank_name: bank_name,
-        password: effective_password
-      )
-
-      if response.success?
-        Rails.logger.info("[BankStatementImport] rupi-engine returned #{response.transaction_count} transactions")
-        return format_api_response(response)
-      else
-        # Handle specific error types
-        case response.error_type
-        when "password_required"
-          raise BankStatementParser::PasswordRequiredError, response.error_message
-        when "connection_error", "timeout"
-          # Fallback to local parser if API is unavailable
-          Rails.logger.warn("[BankStatementImport] rupi-engine unavailable, falling back to local parser")
-          return parse_statement_locally
-        else
-          raise BankStatementParser::ParseError, response.error_message
-        end
-      end
-    else
-      # Use local parser if rupi-engine is disabled or not configured
-      parse_statement_locally
-    end
-  end
-
-  # Parse using local parser (fallback or development mode)
-  def parse_statement_locally
     parser = parser_class.new(statement_file, password: effective_password)
-    parser.parse
-  end
-
-  # Format API response to match expected structure
-  def format_api_response(response)
-    transactions = response.transactions.map do |txn|
-      {
-        date: parse_transaction_date(txn["date"]),
-        amount: BigDecimal(txn["amount"].to_s),
-        description: txn["description"],
-        notes: txn["notes"]
-      }
-    end
-    transactions
-  end
-
-  # Parse date from API response (handles various formats)
-  def parse_transaction_date(date_str)
-    return nil if date_str.blank?
-    Date.parse(date_str)
-  rescue ArgumentError
-    nil
-  end
-
-  # Determine whether to use rupi-engine API
-  def use_rupi_engine?
-    # Use rupi-engine if URL is configured
-    # In development, defaults to localhost:4000
-    # In production, should be set to the actual rupi-engine URL
-    ENV["RUPI_ENGINE_URL"].present? || Rails.env.development?
+    transactions = parser.parse
+    
+    # Bundle metadata if available
+    {
+      transactions: transactions,
+      metadata: parser.respond_to?(:metadata) ? parser.metadata : {}
+    }
   end
 
   def parser_class

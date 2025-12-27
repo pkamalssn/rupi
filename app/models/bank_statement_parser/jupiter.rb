@@ -6,8 +6,7 @@ module BankStatementParser
       if excel_file?
         parse_excel
       elsif pdf_file?
-        text = extract_text_from_pdf
-        parse_transactions_from_text(text)
+        parse_pdf
       else
         raise UnsupportedFormatError, "Unsupported format for Jupiter statement"
       end
@@ -92,59 +91,197 @@ module BankStatementParser
       end
     end
 
-    def parse_transactions_from_text(text)
+    def parse_pdf
+      # Memory efficient: Split by page and process lines directly
+      lines = []
+      
+      begin
+         if file.respond_to?(:download)
+           pdf_content = StringIO.new(file.download) 
+           reader = PDF::Reader.new(pdf_content)
+         else
+           reader = PDF::Reader.new(file_path)
+         end
+         
+         # Metadata Extraction State
+         opening_found = false
+         closing_found = false
+
+         reader.pages.each do |page| 
+           page_text = page.text
+           lines.concat(page_text.split("\n")) 
+           
+           # Extract Metadata (Opening/Closing Balance)
+           unless opening_found
+             if match = page_text.match(/Opening Balance\s+([\d,]+\.\d{2})/i)
+               @metadata[:opening_balance] = parse_amount(match[1])
+               opening_found = true
+             end
+           end
+           
+           # Always look for closing balance (might be updated on later pages)
+           if match = page_text.match(/Effective Available Balance.*?([\d,]+\.\d{2})/i)
+             @metadata[:closing_balance] = parse_amount(match[1])
+             closing_found = true
+           elsif match = page_text.match(/Closing Balance.*?([\d,]+\.\d{2})/i)
+              @metadata[:closing_balance] = parse_amount(match[1])
+              closing_found = true
+           end
+         end
+      rescue => e
+         # Fallback or error handling
+         Rails.logger.error("Error reading Jupiter PDF: #{e.message}")
+         # Attempt to proceed with whatever lines we got or raise
+         raise e
+      end
+
+      parse_transactions_from_text(lines)
+    end
+
+    def parse_transactions_from_text(lines)
+      if lines.is_a?(String)
+        lines = lines.split("\n")
+      end
+
       transactions = []
-      lines = text.split("\n")
+      current_txn = nil
+      last_balance = nil
+      first_balance = nil  # Track for closing balance (Jupiter is chronological)
 
       lines.each do |line|
+        line = line.strip 
+        next if line.empty?
+
         # Jupiter/Federal Bank PDF formats:
         # "01-Jan-2025  Description  1000.00 Dr  50000.00"
         # "01/01/2025   Description  1000.00     50000.00"
         
-        # Check for date patterns
-        next unless line.match?(/\d{1,2}[-\/][A-Za-z]{3}[-\/]\d{2,4}/) || 
-                    line.match?(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/)
+        match = line.match(/^(\d{1,2}-[A-Za-z]{3}-\d{2,4})/) ||
+                line.match(/^(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/)
         
-        # Extract date
-        date_match = line.match(/(\d{1,2}-[A-Za-z]{3}-\d{2,4})/) ||
-                     line.match(/(\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4})/)
-        next unless date_match
-        
-        date = parse_date(date_match[1])
-        next unless date
-        
-        # Extract amounts
-        amounts = line.scan(/([\d,]+\.\d{2})/).flatten
-        next if amounts.empty?
-        
-        # Determine if debit or credit
-        amount = parse_amount(amounts.first)
-        next unless amount && amount > 0
-        
-        is_debit = line.upcase.match?(/\bDR\b|DEBIT|UPI\/|NEFT\/|IMPS\/|WITHDRAWAL/)
-        is_credit = line.upcase.match?(/\bCR\b|CREDIT|DEPOSIT|SALARY|INTEREST/)
-        
-        if is_debit && !is_credit
-          amount = -amount.abs
-        elsif is_credit
-          amount = amount.abs
-        else
-          # Default to debit for unknown
-          amount = -amount.abs
+        if match
+          if current_txn && current_txn[:amount]
+            transactions << current_txn
+          end
+
+          value_date = parse_date(match[1])
+          
+          # Extract all numbers (include negative for ODraft support)
+          amounts_found = line.scan(/(-?[\d,]+\.?\d{0,2})/).flatten.map { |s| parse_amount(s) }.compact
+          # Filter out weird small nums if needed, but keeping generally is safer
+          amounts = amounts_found.select { |ns| ns.abs > 0 }
+          
+          amount = nil
+          balance = nil
+          
+          if amounts.length >= 2
+             balance = amounts.last
+             raw_amount = amounts[-2]
+             
+             # Track first balance for closing (Jupiter is chronological - first=oldest)
+             first_balance ||= balance
+             
+             # MATH HEURISTIC for Dr/Cr
+             if last_balance
+               # Debit: Last - Curr = Amount (Decay)
+               diff = last_balance - balance
+               
+               if (diff.abs - raw_amount.abs).abs < 1.0
+                 # The difference matches the amount extracted
+                 # If Last > Curr, it's a Debit (Diff > 0)
+                 # If Last < Curr, it's a Credit (Diff < 0)
+                 if diff > 0
+                   amount = -diff.abs # Debit
+                 else
+                   amount = diff.abs # Credit
+                 end
+               else
+                 # Math didn't match perfectly
+                 # Fallback to visual indicators
+                 is_cr = line.match?(/\b(CR|Cr)\b/) || line.match?(/CREDIT|DEPOSIT/)
+                 amount = is_cr ? raw_amount.abs : -raw_amount.abs
+               end
+             else
+               # First txn
+               # Look for explicit Cr/Dr
+               is_cr = line.match?(/\b(CR|Cr)\b/) || line.match?(/CREDIT|DEPOSIT/)
+               amount = is_cr ? raw_amount.abs : -raw_amount.abs
+             end
+             
+             last_balance = balance
+          elsif amounts.length == 1
+             # Just amount?
+             raw_amount = amounts.first
+             is_cr = line.match?(/\b(CR|Cr)\b/) || line.match?(/CREDIT|DEPOSIT/)
+             amount = is_cr ? raw_amount.abs : -raw_amount.abs
+          end
+
+          # Description extraction
+          description = line.sub(match[0], "").strip
+          description = description.gsub(/[\d,]+\.\d{2}/, "").gsub(/\b(Dr|Cr)\b/i, "").strip
+          description = clean_description(description)
+
+          current_txn = {
+            date: value_date,
+            amount: amount,
+            description: description.presence || "Jupiter Transaction",
+            notes: "Imported from Jupiter statement",
+            _balance: balance  # Internal for balance-chain verification
+          }
+        elsif current_txn && !line.match?(/^\d/)
+           current_txn[:description] = [current_txn[:description], clean_description(line)].compact.join(" ")
         end
-
-        # Extract description
-        description = line.sub(date_match[0], "").strip
-        description = description.gsub(/([\d,]+\.\d{2})/, "").gsub(/\b(Dr|Cr)\b/i, "").strip
-        description = clean_description(description)
-
-        transactions << {
-          date: date,
-          amount: amount,
-          description: description.presence || "Jupiter Transaction",
-          notes: "Imported from Jupiter/Federal Bank statement"
-        }
       end
+      
+      if current_txn && current_txn[:amount]
+        transactions << current_txn
+      end
+
+      # =====================================================
+      # BALANCE-CHAIN VERIFICATION - Correct Polarity
+      # =====================================================
+      # Jupiter is CHRONOLOGICAL (oldest first)
+      # For each txn: prev_balance + correct_amount = curr_balance
+      
+      transactions.each_with_index do |txn, idx|
+        next unless txn[:_balance]
+        next if idx == 0  # First txn can't be verified
+        
+        prev_txn = transactions[idx - 1]
+        next unless prev_txn[:_balance]
+        
+        prev_balance = prev_txn[:_balance].to_f
+        curr_balance = txn[:_balance].to_f
+        raw_amount = txn[:amount].abs
+        
+        # Check: Does prev + amount = curr? (Credit)
+        if (prev_balance + raw_amount - curr_balance).abs < 1.0
+          txn[:amount] = raw_amount  # Positive (credit)
+        # Check: Does prev - amount = curr? (Debit)
+        elsif (prev_balance - raw_amount - curr_balance).abs < 1.0
+          txn[:amount] = -raw_amount  # Negative (debit)
+        end
+        # If neither matches, keep original
+      end
+
+      # =====================================================
+      # METADATA DERIVATION (Fallback if not found in PDF text)
+      # =====================================================
+      # Jupiter is chronological: first txn = oldest, last txn = newest
+      
+      # Opening Balance: FirstBalance - FirstAmount
+      if @metadata[:opening_balance].nil? && transactions.any? && transactions.first[:_balance]
+        first_txn = transactions.first
+        @metadata[:opening_balance] = (first_txn[:_balance] - first_txn[:amount]).round(2)
+      end
+      
+      # Closing Balance: Last transaction's balance
+      if @metadata[:closing_balance].nil? && transactions.any? && transactions.last[:_balance]
+        @metadata[:closing_balance] = transactions.last[:_balance]
+      end
+
+      # Cleanup internal fields
+      transactions.each { |t| t.delete(:_balance) }
 
       transactions
     end
