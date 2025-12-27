@@ -1,0 +1,25 @@
+---
+en:
+  sessions:
+    create:
+      invalid_credentials: Invalid email or password.
+      invalid_credentials_with_warning: "Invalid email or password. %{remaining} attempt(s) remaining before your account is locked."
+      account_locked: "Your account has been locked due to too many failed login attempts. Please try again in %{time}, or reset your password."
+    destroy:
+      logout_successful: You have signed out successfully.
+    openid_connect:
+      failed: Could not authenticate via OpenID Connect.
+    failure:
+      failed: Could not authenticate.
+    new:
+      email: Email address
+      email_placeholder: you@example.com
+      forgot_password: Forgot your password?
+      password: Password
+      submit: Log in
+      title: Sure
+      password_placeholder: Enter your password
+      openid_connect: Sign in with OpenID Connect
+      google_auth_connect: Sign in with Google
+      demo_banner_title: "Demo Mode Active"
+      demo_banner_message: "This is a demonstration environment. Login credentials have been pre-filled for your convenience. Please do not enter real or sensitive information."

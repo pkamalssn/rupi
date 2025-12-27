@@ -1,0 +1,16 @@
+---
+en:
+  password_resets:
+    edit:
+      title: Reset password
+    new:
+      requested: Please check your email for a link to reset your password.
+      submit: Reset password
+      title: Reset password
+      back: Back
+    create:
+      email_required: Please enter your email address.
+      user_not_found: "No account found with this email address. Please check the email or sign up for a new account."
+    update:
+      invalid_token: Your password reset link has expired or is invalid. Please request a new link below - reset links are valid for 1 hour.
+      success: Your password has been reset.

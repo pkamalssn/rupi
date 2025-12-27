@@ -1,0 +1,30 @@
+<h1>You're Invited to RUPI! 🎉</h1>
+
+<p>
+  <%= t(
+    ".body",
+    inviter: @invitation.inviter.display_name,
+    family: @invitation.family.name,
+    product_name: product_name
+  ).html_safe %>
+</p>
+
+<p><%= link_to "Accept Invitation", @accept_url, class: "button" %></p>
+
+<p style="font-size: 14px; color: #6b7280;">This invitation expires in <strong>3 days</strong>.</p>
+
+<!-- What RUPI offers -->
+<div class="feature-box">
+  <div class="feature-title">🚀 What you'll get with RUPI:</div>
+  <ul class="feature-list">
+    <li>Track finances together with your family</li>
+    <li>Upload bank statements from 12+ Indian banks</li>
+    <li>AI-powered financial insights</li>
+    <li>Privacy-first: Your data stays private</li>
+    <li>FREE during Beta - All Premium features included!</li>
+  </ul>
+</div>
+
+<p style="text-align: center; font-size: 14px; color: #6b7280;">
+  Join thousands of Indian families managing their finances smarter with RUPI.
+</p>

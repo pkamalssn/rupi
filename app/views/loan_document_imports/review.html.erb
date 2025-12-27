@@ -1,0 +1,234 @@
+<%# Review & Edit extracted loan data before creating account %>
+
+<%= render DS::Dialog.new(size: :lg) do |dialog| %>
+  <% dialog.with_header(title: "Review Loan Details") %>
+  <% dialog.with_body do %>
+    <div class="space-y-6">
+      <%# Confidence indicator %>
+      <div class="flex items-center justify-between p-4 rounded-lg <%= @import.low_confidence? ? 'bg-yellow-50 border border-yellow-200' : 'bg-green-50 border border-green-200' %>">
+        <div class="flex items-center gap-3">
+          <% if @import.low_confidence? %>
+            <%= lucide_icon "alert-triangle", class: "w-5 h-5 text-yellow-600" %>
+            <div>
+              <p class="text-sm font-medium text-yellow-800">Low Confidence Extraction</p>
+              <p class="text-xs text-yellow-700">Please carefully review all fields - some may need correction.</p>
+            </div>
+          <% else %>
+            <%= lucide_icon "sparkles", class: "w-5 h-5 text-green-600" %>
+            <div>
+              <p class="text-sm font-medium text-green-800">AI Extraction: <%= @import.confidence_label %></p>
+              <p class="text-xs text-green-700">Review the extracted information and make any corrections.</p>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      <%# Error Display %>
+      <% if @import.error.present? %>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <%= lucide_icon "alert-circle", class: "w-5 h-5 text-red-600 mt-0.5" %>
+          <div>
+            <h3 class="text-sm font-medium text-red-800">Import Failed</h3>
+            <p class="text-xs text-red-700 mt-1"><%= @import.error %></p>
+          </div>
+        </div>
+      <% end %>
+
+      <% matched_account = @import.match_existing_account %>
+      
+      <% if matched_account %>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <%= lucide_icon "link", class: "w-5 h-5 text-blue-600 mt-0.5" %>
+          <div>
+            <h3 class="text-sm font-medium text-blue-900">Found Existing Loan Account</h3>
+            <p class="text-xs text-blue-700 mt-1">
+              Matched matches <strong><%= matched_account.name %></strong>. 
+              Proceeding will update this account and append any new transactions found.
+            </p>
+          </div>
+        </div>
+      <% end %>
+
+      <%= form_with model: @import, url: loan_document_import_path(@import), method: :patch, local: true, class: "space-y-6" do |f| %>
+        <%# Lender & Loan Type %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-field">
+            <label class="form-field__label">Lender Name *</label>
+            <%= f.text_field :lender_name, class: "form-field__input", required: true, placeholder: "e.g., HDFC Bank, Bajaj Finance" %>
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label">Loan Type</label>
+            <%= f.select :loan_type, 
+                Loan::SUBTYPES.map { |k, v| [v[:long], k] },
+                { include_blank: "Select type" },
+                class: "form-field__input" %>
+          </div>
+        </div>
+        
+        <%# Principal & Outstanding %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-field">
+            <label class="form-field__label">Principal Amount *</label>
+            <div class="flex items-center gap-2">
+              <span class="text-secondary">₹</span>
+              <%= f.number_field :principal_amount, class: "form-field__input", required: true, step: 0.01, min: 0 %>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label">Outstanding Balance</label>
+            <div class="flex items-center gap-2">
+              <span class="text-secondary">₹</span>
+              <%= f.number_field :outstanding_balance, class: "form-field__input", step: 0.01, min: 0 %>
+            </div>
+            <p class="text-xs text-secondary mt-1">Current amount remaining (if different from principal)</p>
+          </div>
+        </div>
+
+        <%# Interest Rate & Type %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-field">
+            <label class="form-field__label">Interest Rate (% p.a.)</label>
+            <%= f.number_field :interest_rate, class: "form-field__input", step: 0.01, min: 0, max: 50 %>
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label">Rate Type</label>
+            <%= f.select :rate_type, 
+                [["Fixed", "fixed"], ["Floating", "floating"]],
+                { include_blank: "Select type" },
+                class: "form-field__input" %>
+          </div>
+        </div>
+
+        <%# Tenure & EMI %>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="form-field">
+            <label class="form-field__label">Tenure (Months)</label>
+            <%= f.number_field :tenure_months, class: "form-field__input", min: 1, max: 600 %>
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label">EMI Amount</label>
+            <div class="flex items-center gap-2">
+              <span class="text-secondary">₹</span>
+              <%= f.number_field :emi_amount, class: "form-field__input", step: 0.01, min: 0 %>
+            </div>
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label">EMI Day</label>
+            <%= f.number_field :emi_day, class: "form-field__input", min: 1, max: 28, placeholder: "1-28" %>
+            <p class="text-xs text-secondary mt-1">Day of month when EMI is debited</p>
+          </div>
+        </div>
+
+        <%# Dates %>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-field">
+            <label class="form-field__label">Disbursement Date</label>
+            <%= f.date_field :disbursement_date, class: "form-field__input" %>
+          </div>
+
+          <div class="form-field">
+            <label class="form-field__label">Maturity Date</label>
+            <%= f.date_field :maturity_date, class: "form-field__input" %>
+          </div>
+        </div>
+
+        <%# Account Number %>
+        <div class="form-field">
+          <label class="form-field__label">Loan Account Number</label>
+          <%= f.text_field :loan_account_number, class: "form-field__input", placeholder: "Optional" %>
+        </div>
+
+        <%# Notes %>
+        <div class="form-field">
+          <label class="form-field__label">Notes</label>
+          <%= f.text_area :notes, class: "form-field__input", rows: 3, placeholder: "Any additional notes about this loan..." %>
+        </div>
+
+        <%# Extracted Transactions %>
+        <% if @import.extracted_data.present? && @import.extracted_data["transactions"].present? %>
+          <div class="pt-6 border-t border-secondary">
+            <h3 class="text-lg font-medium text-primary mb-3">Extracted Transactions (<%= @import.extracted_data["transactions"].length %>)</h3>
+            <p class="text-xs text-secondary mb-3">These transactions will be added to the loan account ledger.</p>
+            <div class="overflow-x-auto border border-secondary rounded-lg">
+              <table class="w-full text-sm text-left">
+                <thead class="bg-container">
+                  <tr>
+                    <th class="px-4 py-2 font-medium text-secondary">Date</th>
+                    <th class="px-4 py-2 font-medium text-secondary">Type</th>
+                    <th class="px-4 py-2 font-medium text-secondary">Description</th>
+                    <th class="px-4 py-2 font-medium text-secondary text-right">Amount</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-secondary">
+                  <% @import.extracted_data["transactions"].first(8).each do |tx| %>
+                    <% 
+                      tx_type = tx["type"].to_s.downcase
+                      is_positive = %w[payment prepayment].include?(tx_type)
+                      color_class = case tx_type
+                                    when "prepayment" then "text-blue-600"
+                                    when "payment" then "text-green-600"
+                                    else "text-red-600"
+                                    end
+                    %>
+                    <tr>
+                      <td class="px-4 py-2 text-primary"><%= tx["date"] %></td>
+                      <td class="px-4 py-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium <%= color_class %> bg-opacity-10 <%= tx_type == 'prepayment' ? 'bg-blue-100 dark:bg-blue-900' : (tx_type == 'payment' ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900') %>">
+                          <%= tx_type.humanize %>
+                        </span>
+                      </td>
+                      <td class="px-4 py-2 text-primary"><%= tx["description"] %></td>
+                      <td class="px-4 py-2 text-right <%= color_class %>">
+                        <%= is_positive ? '+' : '-' %><%= number_with_precision(tx["amount"], precision: 0, delimiter: ",") %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+              
+              <% if @import.extracted_data["transactions"].length > 8 %>
+                <p class="text-xs text-secondary p-2 text-center bg-container">... and <%= @import.extracted_data["transactions"].length - 8 %> more</p>
+              <% end %>
+            </div>
+            
+            <%# Summary %>
+            <% 
+              txs = @import.extracted_data["transactions"]
+              payments = txs.select { |t| t["type"].to_s.downcase == "payment" }
+              prepayments = txs.select { |t| t["type"].to_s.downcase == "prepayment" }
+            %>
+            <div class="mt-3 flex gap-4 text-xs text-secondary">
+              <span><%= payments.count %> EMI Payments (₹<%= number_with_precision(payments.sum { |t| t["amount"].to_f }, precision: 0, delimiter: ",") %>)</span>
+              <% if prepayments.any? %>
+                <span class="text-blue-600"><%= prepayments.count %> Prepayments (₹<%= number_with_precision(prepayments.sum { |t| t["amount"].to_f }, precision: 0, delimiter: ",") %>)</span>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+
+        <%# Actions %>
+        <div class="flex justify-between items-center pt-4 border-t border-secondary">
+          <div>
+            <%= link_to "Cancel & Delete", loan_document_import_path(@import), 
+                method: :delete, 
+                data: { confirm: "Are you sure you want to cancel this import?" },
+                class: "text-sm text-red-600 hover:text-red-800" %>
+          </div>
+          
+          <div class="flex gap-3">
+            <%= f.submit "Save Changes", class: "px-4 py-2 border border-primary rounded-lg text-primary hover:bg-container cursor-pointer" %>
+            <%= f.button matched_account ? "Update Loan Account" : "Create Loan Account", 
+                type: "submit", 
+                name: "commit", 
+                value: "publish",
+                class: "px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-medium focus:outline-none focus:ring-2 focus:ring-accent cursor-pointer" %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

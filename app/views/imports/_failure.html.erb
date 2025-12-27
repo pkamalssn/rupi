@@ -1,0 +1,83 @@
+<%# locals: (import:) %>
+
+<div class="h-full flex flex-col justify-center items-center py-8">
+  <div class="space-y-6 max-w-md w-full px-4">
+    
+    <%# Error icon %>
+    <div class="mx-auto bg-red-100 h-16 w-16 rounded-full flex items-center justify-center">
+      <%= icon "alert-triangle", class: "w-8 h-8 text-red-600" %>
+    </div>
+
+    <%# Error message %>
+    <div class="text-center space-y-2">
+      <h1 class="font-bold text-primary text-2xl">Import Failed</h1>
+      <p class="text-sm text-secondary">
+        <% if import.is_a?(BankStatementImport) %>
+          We couldn't process your <%= import.bank_name.gsub('_', ' ') %> statement.
+        <% else %>
+          Something went wrong during the import process.
+        <% end %>
+      </p>
+    </div>
+
+    <%# Error details %>
+    <% if import.error.present? %>
+      <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+        <div class="flex items-start gap-3">
+          <%= icon "info", class: "w-5 h-5 text-red-600 shrink-0 mt-0.5" %>
+          <div class="text-sm text-red-800">
+            <p class="font-medium mb-1">Error Details:</p>
+            <p class="text-xs"><%= import.error %></p>
+          </div>
+        </div>
+      </div>
+    <% end %>
+
+    <%# Common fixes %>
+    <div class="bg-container-inset rounded-lg p-4 space-y-3">
+      <p class="text-sm font-medium text-primary">Common fixes:</p>
+      <ul class="text-xs text-secondary space-y-2">
+        <% if import.error&.downcase&.include?("password") %>
+          <li class="flex items-start gap-2">
+            <%= icon "key", class: "w-4 h-4 text-yellow-600 shrink-0" %>
+            <span>This PDF is password-protected. Enter the password when uploading.</span>
+          </li>
+        <% end %>
+        <li class="flex items-start gap-2">
+          <%= icon "file-check", class: "w-4 h-4 text-blue-600 shrink-0" %>
+          <span>Make sure you selected the correct bank/card type</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <%= icon "file-type", class: "w-4 h-4 text-blue-600 shrink-0" %>
+          <span>Use the official bank statement PDF (not screenshots)</span>
+        </li>
+        <li class="flex items-start gap-2">
+          <%= icon "calendar", class: "w-4 h-4 text-blue-600 shrink-0" %>
+          <span>Try a more recent statement if the format has changed</span>
+        </li>
+      </ul>
+    </div>
+
+    <%# Actions %>
+    <div class="space-y-2 flex flex-col">
+      <%= render DS::Link.new(
+        text: "Try Again",
+        variant: "primary",
+        full_width: true,
+        href: new_bank_statement_path,
+        icon: "refresh-cw"
+      ) %>
+      
+      <%= render DS::Link.new(
+        text: "Back to Dashboard",
+        variant: "secondary",
+        full_width: true,
+        href: root_path
+      ) %>
+      
+      <%= link_to imports_path, class: "text-center text-sm text-secondary hover:text-primary" do %>
+        View All Imports
+      <% end %>
+    </div>
+  </div>
+</div>

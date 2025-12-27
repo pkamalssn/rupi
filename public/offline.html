@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="theme-color"
+      content="#1a1a1a"
+      media="(prefers-color-scheme: dark)"
+    />
+    <title>Offline - RUPI</title>
+    <style>
+      /* ... (keeping existing reset) ... */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        background: #f9f9f9;
+        color: #1a1a1a;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+      /* ... */
+      .reload-button {
+        /* ... */
+        background: #16a34a; /* RUPI Green-600 */
+        /* ... */
+      }
+
+      .reload-button:hover {
+        background: #15803d;
+      }
+      /* ... */
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <img
+        src="/logo-pwa.png"
+        alt="RUPI"
+        class="logo"
+        style="border-radius: 20px"
+      />
+
+      <h1>
+        We're experiencing <br />
+        technical difficulties
+      </h1>
+      <p>
+        It looks like you're offline or we can't reach our servers right now.
+        Please check your connection and try again.
+      </p>
+
+      <button class="reload-button" onclick="window.location.reload()">
+        <svg
+          class="reload-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path
+            d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"
+          />
+        </svg>
+        Reload
+      </button>
+    </div>
+
+    <script>
+      // Automatically reload when connection is restored
+      window.addEventListener("online", function () {
+        setTimeout(function () {
+          window.location.reload();
+        }, 1000);
+      });
+    </script>
+  </body>
+</html>

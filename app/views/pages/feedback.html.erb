@@ -1,0 +1,21 @@
+<%= content_for :page_title, "Feedback" %>
+
+<div class="bg-container shadow-border-xs rounded-xl p-4">
+  <h2 class="text-lg font-medium text-primary mb-1">Leave feedback</h2>
+  <p class="text-sm text-secondary mb-4">We'd love to hear from you! Share feature requests, bug reports, or just say hi.</p>
+  <div class="flex flex-col md:flex-row gap-4">
+    <%= link_to "mailto:pkamalssn@gmail.com?subject=RUPI%20Feedback", class: "w-full md:w-1/2 flex flex-col items-center p-4 border border-alpha-black-25 rounded-xl hover:bg-container-hover" do %>
+      <%= icon("mail", size: "lg", class: "text-primary mb-2") %>
+      <span class="text-sm font-medium text-primary text-center">Email</span>
+      <span class="text-xs text-secondary">pkamalssn@gmail.com</span>
+    <% end %>
+
+    <%= link_to "https://x.com/storyteller_kp", target: "_blank", rel: "noopener noreferrer", class: "w-full md:w-1/2 flex flex-col items-center p-4 border border-alpha-black-25 rounded-xl hover:bg-container-hover" do %>
+      <%= icon("twitter", size: "lg", class: "text-primary mb-2") %>
+      <span class="text-sm font-medium text-primary text-center">X (Twitter)</span>
+      <span class="text-xs text-secondary">@storyteller_kp</span>
+    <% end %>
+  </div>
+</div>
+
+

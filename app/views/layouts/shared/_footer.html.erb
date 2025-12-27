@@ -1,0 +1,127 @@
+<footer class="p-6">
+  <div class="space-y-2 text-center text-xs text-secondary">
+    <p>&copy; <%= Date.current.year %> <%= product_name %> - Manage your Rupees easier with RUPI! ✨</p>
+    <div class="flex justify-center items-center gap-2">
+      <button type="button" onclick="document.getElementById('privacy-modal').showModal()" class="text-secondary hover:text-primary transition cursor-pointer underline-offset-2 hover:underline">Privacy Policy</button>
+      <span>&bull;</span>
+      <button type="button" onclick="document.getElementById('terms-modal').showModal()" class="text-secondary hover:text-primary transition cursor-pointer underline-offset-2 hover:underline">Terms of Service</button>
+    </div>
+    <p class="text-zinc-600 mt-2">&copy; Kamal Prakash • Built on <a href="https://github.com/maybe-finance/maybe" target="_blank" class="hover:underline">Maybe Finance</a> (AGPL-3.0)</p>
+  </div>
+</footer>
+
+<!-- Privacy Policy Modal -->
+<dialog id="privacy-modal" class="rounded-xl max-w-2xl w-[calc(100%-2rem)] bg-gray-900 text-gray-100 shadow-2xl border border-gray-700" style="margin: auto; padding: 0;">
+  <div class="p-6 max-h-[80vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold" style="background: linear-gradient(135deg, #22C55E 0%, #EAB308 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Privacy Policy</h2>
+      <button onclick="document.getElementById('privacy-modal').close()" class="text-gray-400 hover:text-white transition text-xl">&times;</button>
+    </div>
+    <div class="text-gray-300 space-y-4 text-sm">
+      <p><strong class="text-gray-100">Last Updated:</strong> December 2025</p>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Your Privacy Matters to RUPI</h3>
+      <p>RUPI is built with privacy at its core. We help you track and manage your finances without compromising your data. <strong class="text-emerald-400">We never sell your data to third parties.</strong></p>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">📄 Document Handling (Privacy First)</h3>
+      <div class="bg-emerald-900/30 border border-emerald-700/50 rounded-lg p-3">
+        <p><strong class="text-emerald-400">We DO NOT store your uploaded documents.</strong></p>
+        <ul class="list-disc pl-5 space-y-1 mt-2">
+          <li>Bank statements & loan documents are <strong>automatically deleted</strong> after processing</li>
+          <li>Only the extracted transaction data is retained</li>
+          <li>Your original PDFs are never stored permanently on our servers</li>
+        </ul>
+      </div>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Information We Collect</h3>
+      <ul class="list-disc pl-5 space-y-1">
+        <li><strong class="text-gray-100">Account Information:</strong> Email address and password for authentication</li>
+        <li><strong class="text-gray-100">Financial Data:</strong> Extracted transaction records, account balances, and manually entered data</li>
+        <li><strong class="text-gray-100">Usage Feedback:</strong> Feature requests and bug reports you share (never your financial data)</li>
+      </ul>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">How We Use Your Data</h3>
+      <ul class="list-disc pl-5 space-y-1">
+        <li>To provide personalized financial insights via RUPI AI</li>
+        <li>To categorize and organize your transactions</li>
+        <li>To generate reports and visualizations of your financial health</li>
+      </ul>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Data Security</h3>
+      <p>Your data is encrypted in transit (HTTPS) and at rest. We use industry-standard security measures. Sensitive credentials are encrypted using Rails Active Record Encryption.</p>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Your Rights</h3>
+      <ul class="list-disc pl-5 space-y-1">
+        <li><strong>Export:</strong> Download all your data anytime via Settings → Imports & Exports</li>
+        <li><strong>Delete:</strong> Permanently delete your account and all data via Settings → Profile</li>
+        <li><strong>Control:</strong> You have full control over your financial information</li>
+      </ul>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Contact</h3>
+      <p>For any privacy-related questions: <a href="mailto:pkamalssn@gmail.com" class="text-emerald-400 hover:underline">pkamalssn@gmail.com</a></p>
+    </div>
+    <div class="mt-6 text-center">
+      <button onclick="document.getElementById('privacy-modal').close()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition font-medium">Got it!</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Terms of Service Modal -->
+<dialog id="terms-modal" class="rounded-xl max-w-2xl w-[calc(100%-2rem)] bg-gray-900 text-gray-100 shadow-2xl border border-gray-700" style="margin: auto; padding: 0;">
+  <div class="p-6 max-h-[80vh] overflow-y-auto">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-2xl font-bold" style="background: linear-gradient(135deg, #22C55E 0%, #EAB308 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Terms of Service</h2>
+      <button onclick="document.getElementById('terms-modal').close()" class="text-gray-400 hover:text-white transition text-xl">&times;</button>
+    </div>
+    <div class="text-gray-300 space-y-4 text-sm">
+      <p><strong class="text-gray-100">Last Updated:</strong> December 2025</p>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Welcome to RUPI</h3>
+      <p>By using RUPI, you agree to these terms. Please read them carefully.</p>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Service Description</h3>
+      <p>RUPI is a personal finance management tool that helps you:</p>
+      <ul class="list-disc pl-5 space-y-1">
+        <li>Track your bank accounts, investments, and transactions</li>
+        <li>Import and categorize bank statements</li>
+        <li>Manage properties, vehicles, and other assets</li>
+        <li>Get AI-powered financial insights and assistance</li>
+        <li>Create budgets and track your spending</li>
+      </ul>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">User Responsibilities</h3>
+      <ul class="list-disc pl-5 space-y-1">
+        <li>Provide accurate information when using the service</li>
+        <li>Keep your account credentials secure</li>
+        <li>Use RUPI only for lawful purposes</li>
+        <li>Do not attempt to access other users' data</li>
+      </ul>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Disclaimer</h3>
+      <p>RUPI is a personal finance management tool and does not provide financial advice. For financial decisions, please consult with qualified professionals. We are not responsible for financial decisions made based on information displayed in the app.</p>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Intellectual Property</h3>
+      <p>RUPI and its contents are owned by the developer. You may not copy, modify, or distribute our software without permission.</p>
+      
+      <h3 class="text-base font-semibold text-gray-100 mt-4">Modifications</h3>
+      <p>We may update these terms from time to time. Continued use of RUPI after changes constitutes acceptance of the new terms.</p>
+    </div>
+    <div class="mt-6 text-center">
+      <button onclick="document.getElementById('terms-modal').close()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition font-medium">Got it!</button>
+    </div>
+  </div>
+</dialog>
+
+<style>
+  dialog::backdrop {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+  }
+  dialog[open] {
+    animation: fadeIn 0.2s ease-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+  }
+</style>

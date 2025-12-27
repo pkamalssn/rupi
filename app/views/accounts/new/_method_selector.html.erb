@@ -1,0 +1,32 @@
+<%# locals: (path:, accountable_type:, provider_configs:) %>
+
+<%= render layout: "accounts/new/container", locals: { title: t(".title"), back_path: new_account_path } do %>
+  <div class="text-sm">
+    <%# Manual entry option %>
+    <%= link_to path, class: "flex items-center gap-4 w-full text-center text-primary focus:outline-hidden focus:bg-surface border border-transparent focus:border focus:border-gray-200 px-2 hover:bg-surface rounded-lg p-2" do %>
+      <span class="flex w-8 h-8 shrink-0 grow-0 items-center justify-center rounded-lg bg-alpha-black-50 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)]">
+        <%= icon("keyboard") %>
+      </span>
+      <%= t("accounts.new.method_selector.manual_entry") %>
+    <% end %>
+
+    <%# US/EU providers removed - use bank statement upload instead %>
+    <%# provider_configs.each do |config| %>
+    <%#   ...provider links removed... %>
+    <%# end %>
+
+    <%# Alternative: Bank statement upload link %>
+    <%= link_to new_bank_statement_path, class: "flex items-center gap-4 w-full text-center text-accent focus:outline-hidden focus:bg-surface border border-transparent focus:border focus:border-accent px-2 hover:bg-surface rounded-lg p-2" do %>
+      <span class="flex w-8 h-8 shrink-0 grow-0 items-center justify-center rounded-lg bg-accent/10 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)]">
+        <%= icon("upload") %>
+      </span>
+      <span>Upload Bank Statement</span>
+    <% end %>
+  </div>
+
+  <div class="mt-4 p-3 bg-container-inset rounded-lg">
+    <p class="text-xs text-secondary">
+      <strong>Tip:</strong> For fastest setup, upload your bank statement (HDFC, ICICI, SBI, Axis, Kotak supported). Your transactions will be automatically imported with smart categorization.
+    </p>
+  </div>
+<% end %>

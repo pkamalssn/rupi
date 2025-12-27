@@ -1,0 +1,47 @@
+# Render Blueprint for RUPI (Free Tier)
+# AUTOMATIC DEPLOYMENT CONFIGURATION
+
+services:
+  # 1. Main Web Application (Rails)
+  - type: web
+    name: rupi-app
+    env: docker
+    plan: free
+    # Region: Singapore (closest to India on Render) usually 'singapore' or 'oregon' if free tier restricted
+    # Render Free Tier often defaults to Oregon (US West).
+
+    branch: main
+
+    # Environment Variables
+    envVars:
+      - key: RAILS_MASTER_KEY
+        sync: false # You must paste this manually in Render Dashboard
+      - key: GEMINI_API_KEY
+        sync: false # Paste this manualy
+      - key: RAILS_LOG_TO_STDOUT
+        value: enabled
+      - key: RAILS_SERVE_STATIC_FILES
+        value: true
+      - key: DATABASE_URL
+        fromDatabase:
+          name: rupi-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: rupi-redis
+          property: connectionString
+
+  # 2. Redis (Job Queue & Cache)
+  - type: redis
+    name: rupi-redis
+    plan: free # Persistent not guaranteed, but fine for Free tier
+    ipAllowList: [] # Access only from internal services
+
+databases:
+  # 3. PostgreSQL Database
+  - name: rupi-db
+    databaseName: rupi_production
+    user: rupi_user
+    plan: free # 90 days active, spins down
+    postgresMajorVersion: 16

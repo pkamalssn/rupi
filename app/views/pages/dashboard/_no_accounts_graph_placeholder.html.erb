@@ -1,0 +1,29 @@
+<div class="h-[300px] lg:h-[340px] bg-container shadow-border-xs rounded-xl py-4 flex flex-col items-center justify-center">
+  <div class="space-y-4 text-center flex flex-col items-center px-4">
+    <%= render DS::FilledIcon.new(
+      variant: :container,
+      icon: "layers",
+    ) %>
+
+    <p class="text-sm font-medium text-primary"><%= t("pages.dashboard.no_accounts.title") %></p>
+    <p class="text-secondary text-sm"><%= t("pages.dashboard.no_accounts.description") %></p>
+
+    <%# Primary Action: Upload Bank Statement %>
+    <%= link_to new_bank_statement_path, class: "w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-medium" do %>
+      <%= icon("upload") %>
+      <span>Upload Bank Statement</span>
+    <% end %>
+
+    <%# Secondary Action: Manual Account Entry %>
+    <%= link_to new_account_path, 
+        class: "inline-flex items-center gap-1 text-sm text-accent hover:underline", 
+        data: { turbo_frame: :modal } do %>
+      <%= icon("plus", size: "sm") %>
+      <span>Or add account manually</span>
+    <% end %>
+
+    <p class="text-xs text-secondary mt-2">
+      Supports HDFC, ICICI, SBI, Axis, Kotak & more
+    </p>
+  </div>
+</div>

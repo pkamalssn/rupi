@@ -1,0 +1,8 @@
+---
+en:
+  password_mailer:
+    password_reset:
+      cta: Reset Password
+      ignore_if_not_requested: If you didn't ask for a password reset, you can safely ignore this email. Your account remains secure.
+      request_made: We received a request to reset the password for your %{product_name} account. No worries, it happens to the best of us!
+      subject: "Reset your %{product_name} password"

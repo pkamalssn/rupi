@@ -1,0 +1,5 @@
+web: bundle exec ${DEBUG:+rdbg -O -n -c --} bin/rails server -b 0.0.0.0
+css: bundle exec bin/rails tailwindcss:watch 2>/dev/null
+# GoodJob runs INSIDE the Puma process in async mode, no separate worker needed!
+# If you want to run a separate worker process for development, uncomment below:
+# worker: bundle exec good_job start

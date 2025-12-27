@@ -1,0 +1,67 @@
+<%= content_for :page_title, "About RUPI" %>
+
+<div class="bg-container rounded-xl shadow-border-xs p-6 prose prose-sm max-w-none">
+  <div class="flex items-center gap-3 mb-4">
+    <%= image_tag "logo-color.png", class: "w-12 h-12" %>
+    <div>
+      <h1 class="text-2xl font-bold mb-0">RUPI</h1>
+      <p class="text-secondary text-sm mb-0">Manage your Rupees easier with RUPI! ✨</p>
+    </div>
+  </div>
+  
+  <p class="text-lg"><strong>Version 2.3</strong> <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full ml-2">BETA LIVE</span></p>
+  
+  <hr>
+  
+  <h2>🇮🇳 Built for India</h2>
+  <p>RUPI is a personal finance management tool designed specifically for Indian households. Track your bank accounts, credit cards, loans, investments, and more - all in one place.</p>
+  
+  <h2>✨ Key Features</h2>
+  <ul>
+    <li><strong>Bank Statement Import</strong> - Upload HDFC, ICICI, SBI, Kotak and other bank statements (PDF/Excel)</li>
+    <li><strong>Password-Protected PDFs</strong> - Securely parse encrypted bank statements</li>
+    <li><strong>Loan Management</strong> - Track home loans, car loans, personal loans with EMI schedules</li>
+    <li><strong>AI Chat Assistant</strong> - Ask questions about your finances in natural language</li>
+    <li><strong>Family Accounts</strong> - Manage finances for multiple family members</li>
+    <li><strong>Auto-Categorization</strong> - AI-powered transaction categorization</li>
+    <li><strong>EMI Reconciliation</strong> - Automatic matching of bank debits to loan EMIs</li>
+  </ul>
+  
+  <h2>🔒 Privacy First</h2>
+  <p>Your financial data stays on your device. RUPI runs locally - no data is sent to external servers except for AI features (Google Gemini).</p>
+  
+  <h2>💻 Technical Details</h2>
+  <ul>
+    <li>Built on Ruby on Rails 7.2</li>
+    <li>AI powered by Google Gemini</li>
+    <li>Originally forked from Maybe Finance</li>
+    <li>Customized for Indian banking context</li>
+  </ul>
+  
+  <hr>
+  
+  <h2>👤 Developer</h2>
+  <div class="flex items-center gap-4 not-prose">
+    <div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
+      KP
+    </div>
+    <div>
+      <p class="font-semibold text-primary">Kamal Prakash</p>
+      <div class="flex items-center gap-3 text-sm text-secondary">
+        <a href="https://github.com/pkamalssn" target="_blank" class="hover:text-primary flex items-center gap-1">
+          <%= icon "github-icon", size: "sm", custom: true %> GitHub
+        </a>
+        <a href="https://x.com/storyteller_kp" target="_blank" class="hover:text-primary flex items-center gap-1">
+          𝕏 Twitter
+        </a>
+        <a href="mailto:pkamalssn@gmail.com" class="hover:text-primary flex items-center gap-1">
+          <%= icon "mail", size: "sm" %> Email
+        </a>
+      </div>
+    </div>
+  </div>
+  
+  <hr>
+  
+  <p class="text-xs text-secondary text-center">Made with ❤️ for managing family finances better.</p>
+</div>

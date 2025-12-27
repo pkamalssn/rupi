@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)">
+  <title>Server Error - RUPI</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #F9F9F9;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 400px;
+      text-align: center;
+    }
+
+    .logo {
+      width: 100px;
+      height: auto;
+      margin: 0 auto 32px;
+      border-radius: 20px;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #1a1a1a;
+    }
+
+    p {
+      font-size: 16px;
+      color: #666;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .reload-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: #dc2626; /* RUPI Red for Error */
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 24px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s ease;
+    }
+
+    .reload-button:hover { background: #b91c1c; }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background: #1a1a1a;
+        color: #f9f9f9;
+      }
+      h1 { color: #f9f9f9; }
+      p { color: #999; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <img src="/logo-pwa.png" alt="RUPI" class="logo">
+    <h1>Something went wrong</h1>
+    <p>We're sorry, but something went wrong on our end. We've been notified and are looking into it.</p>
+
+    <a href="/" class="reload-button">
+      Return Home
+    </a>
+  </div>
+</body>
+</html>

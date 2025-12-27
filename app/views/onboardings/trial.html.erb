@@ -1,0 +1,177 @@
+<%= content_for :previous_path, goals_onboarding_path %>
+
+<%= content_for :header_nav do %>
+  <%= render "onboardings/onboarding_nav", user: @user %>
+<% end %>
+
+<%= content_for :cancel_action do %>
+  <%= render "onboardings/logout" %>
+<% end %>
+
+<%= content_for :footer do %>
+  <%= render "layouts/shared/footer" %>
+<% end %>
+
+<div class="grow flex flex-col gap-8 items-center justify-center px-4">
+  <div class="max-w-md mx-auto flex flex-col items-center text-center">
+    <%= image_tag "logomark.svg", class: "w-20 mb-4 rupi-logo" %>
+
+    <!-- Beta Badge -->
+    <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-500 text-sm font-medium mb-4">
+      <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+      Early Access Beta
+    </div>
+
+    <h1 class="text-2xl lg:text-3xl font-bold mb-2" style="background: linear-gradient(135deg, var(--rupi-green) 0%, var(--rupi-gold) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+      Join the RUPI Beta
+    </h1>
+
+    <p class="text-lg text-secondary mb-2">
+      Get ready to manage your Rupees easier with RUPI! ✨
+    </p>
+
+    <p class="text-sm text-zinc-500 mb-6">
+      100% Free during Beta. Help us build India's smartest personal finance app.
+    </p>
+
+    <div class="w-full mb-6">
+      <% if Current.family.can_start_trial? %>
+        <%= render DS::Button.new(
+          text: "Start Using RUPI",
+          href: subscription_path,
+          full_width: true,
+          data: { turbo: false }
+        ) %>
+      <% elsif Current.family.trialing? %>
+        <%= render DS::Link.new(
+          text: "Continue to Dashboard",
+          href: root_path,
+          full_width: true,
+        ) %>
+      <% else %>
+        <%= render DS::Link.new(
+          text: "Continue to Dashboard",
+          href: root_path,
+          full_width: true,
+        ) %>
+      <% end %>
+    </div>
+
+    <!-- Privacy & What happens after beta -->
+    <div class="w-full space-y-3">
+      <!-- Privacy First Notice -->
+      <div class="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-left">
+        <div class="flex items-start gap-2">
+          <%= icon("shield-check", size: "sm", class: "text-emerald-500 mt-0.5 flex-shrink-0") %>
+          <div>
+            <h3 class="text-sm font-semibold text-emerald-400 mb-1">Privacy First</h3>
+            <p class="text-xs text-secondary">
+              Your financial data is <span class="text-primary font-medium">never used for training</span>. 
+              Uploaded statements are parsed and then deleted from our servers. 
+              We only collect your <span class="text-primary">feedback and feature requests</span> to improve RUPI.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- What happens after beta -->
+      <div class="p-3 bg-surface-inset rounded-xl text-left">
+        <h3 class="text-sm font-semibold text-primary mb-1">What happens after Beta?</h3>
+        <p class="text-xs text-secondary">
+          RUPI will have a subscription (₹149/month or ₹1,499/year) to cover server costs. 
+          <span class="text-amber-500 font-medium">Beta users get a special early-adopter discount.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Why Join Beta -->
+  <div class="max-w-lg mx-auto">
+    <h2 class="text-center text-base font-semibold text-primary mb-4">Why join the Beta?</h2>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+      <div class="flex items-start gap-3 p-3 bg-surface-inset rounded-lg">
+        <span class="text-emerald-500 text-lg">✓</span>
+        <div>
+          <p class="text-primary font-medium">Early Adopter Discount</p>
+          <p class="text-xs text-secondary">Lock in lower pricing when we launch</p>
+        </div>
+      </div>
+      
+      <div class="flex items-start gap-3 p-3 bg-surface-inset rounded-lg">
+        <span class="text-emerald-500 text-lg">✓</span>
+        <div>
+          <p class="text-primary font-medium">Shape the Product</p>
+          <p class="text-xs text-secondary">Your feature requests influence development</p>
+        </div>
+      </div>
+      
+      <div class="flex items-start gap-3 p-3 bg-surface-inset rounded-lg">
+        <span class="text-emerald-500 text-lg">✓</span>
+        <div>
+          <p class="text-primary font-medium">Direct Founder Access</p>
+          <p class="text-xs text-secondary">Report bugs, suggest features directly</p>
+        </div>
+      </div>
+      
+      <div class="flex items-start gap-3 p-3 bg-surface-inset rounded-lg">
+        <span class="text-emerald-500 text-lg">✓</span>
+        <div>
+          <p class="text-primary font-medium">Privacy Guaranteed</p>
+          <p class="text-xs text-secondary">No data sold, no training on your finances</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="space-y-8 max-w-2xl mx-auto">
+    <h2 class="text-center text-lg lg:text-2xl font-medium text-primary">Here's what's included</h2>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-x-12 gap-y-6 text-secondary">
+      <div class="flex flex-col gap-4 items-center">
+        <%= render DS::FilledIcon.new(icon: "file-text", variant: :surface) %>
+        <p class="text-sm text-primary text-center">Smart Indian Bank Statement Parser (HDFC, ICICI, SBI, Axis, Kotak & more)</p>
+      </div>
+
+      <div class="flex flex-col gap-4 items-center">
+        <%= render DS::FilledIcon.new(icon: "sparkles", variant: :surface) %>
+        <p class="text-sm text-primary text-center">AI-powered Loan & Investment Document Import</p>
+      </div>
+
+      <div class="flex flex-col gap-4 items-center">
+        <%= render DS::FilledIcon.new(icon: "tags", variant: :surface) %>
+        <p class="text-sm text-primary text-center">Auto-categorization with UPI, NEFT & Indian payment patterns</p>
+      </div>
+
+      <div class="flex flex-col gap-4 items-center">
+        <%= render DS::FilledIcon.new(icon: "credit-card", variant: :surface) %>
+        <p class="text-sm text-primary text-center">Credit Card Statement Support (HDFC CC, ICICI Amazon Pay, Scapia)</p>
+      </div>
+
+      <div class="flex flex-col gap-4 items-center">
+        <%= render "chats/ai_avatar" %>
+        <p class="text-sm text-primary text-center">Unlimited access and chats with RUPI AI</p>
+      </div>
+
+      <div class="flex flex-col gap-4 items-center">
+        <%= render DS::FilledIcon.new(icon: "chart-line", variant: :surface) %>
+        <p class="text-sm text-primary text-center">Track investments, mutual funds & portfolio performance</p>
+      </div>
+
+      <div class="flex flex-col gap-4 items-center">
+        <%= render DS::FilledIcon.new(icon: "layers", variant: :surface) %>
+        <p class="text-sm text-primary text-center">Unlimited accounts: Bank, Credit Card, Loan, Property, Vehicle</p>
+      </div>
+
+      <div class="flex flex-col gap-4 items-center">
+        <%= render DS::FilledIcon.new(icon: "mail", variant: :surface) %>
+        <p class="text-sm text-primary text-center"><span class="text-amber-500 font-medium">Coming Soon:</span> Email statement pickup for auto-updates</p>
+      </div>
+
+      <div class="flex flex-col gap-4 items-center">
+        <%= render DS::FilledIcon.new(icon: "shield-check", variant: :surface) %>
+        <p class="text-sm text-primary text-center">Privacy First - Uploaded documents auto-deleted after parsing</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,61 @@
+<%= render "layouts/shared/htmldoc" do %>
+  <div class="flex flex-col h-full">
+    <div class="flex flex-col h-full px-6 py-12 bg-surface">
+      <div class="grow flex flex-col justify-center">
+        <div class="sm:mx-auto sm:w-full sm:max-w-md">
+          <div class="flex flex-col items-center mt-2 md:mb-4">
+            <!-- Bigger RUPI Logo -->
+            <%= image_tag "logomark.svg", class: "w-28 md:w-32 mb-4 rupi-logo" %>
+            
+            <!-- RUPI Typography with gradient -->
+            <h1 class="text-4xl md:text-5xl font-bold mb-3" style="background: linear-gradient(135deg, var(--rupi-green) 0%, var(--rupi-gold) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">
+              RUPI
+            </h1>
+            
+            <!-- Functional heading -->
+            <% if controller_name == "registrations" %>
+              <p class="text-lg text-center text-primary font-medium mb-1">Sign up for RUPI</p>
+              <p class="text-xs text-center text-zinc-500 italic">"Manage your Rupees easier with RUPI!"</p>
+            <% else %>
+              <p class="text-lg text-center text-primary font-medium mb-1">Log in to RUPI</p>
+              <p class="text-xs text-center text-zinc-500 italic">"Manage your Rupees easier with RUPI!"</p>
+            <% end %>
+          </div>
+          
+          <!-- Mobile tab switcher -->
+          <% if (controller_name == "sessions" && action_name == "new") || (controller_name == "registrations" && action_name == "new") %>
+            <div class="space-y-3 md:hidden w-full my-4">
+              <div class="bg-surface-inset rounded-lg p-1 flex">
+                <%= link_to new_session_path,
+    class: "w-1/2 px-2 py-1 rounded-md text-sm text-center font-medium #{current_page?(new_session_path) ? 'bg-surface shadow-sm text-primary' : 'text-secondary'}" do %>
+                  <%= t("layouts.auth.sign_in") %>
+                <% end %>
+                <%= link_to new_registration_path,
+    class: "w-1/2 px-2 py-1 rounded-md text-sm text-center font-medium #{!current_page?(new_session_path) ? 'bg-surface shadow-sm text-primary' : 'text-secondary'}" do %>
+                  <%= t("layouts.auth.sign_up") %>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <div class="mt-4 md:mt-6 sm:mx-auto sm:w-full sm:max-w-lg">
+          <%= yield %>
+          
+          <!-- Sign up / Sign in links moved below the form -->
+          <% if controller_name == "sessions" %>
+            <p class="text-sm text-center mt-6 hidden md:block">
+              <%= tag.span t(".no_account", product_name: product_name), class: "text-secondary" %> <%= link_to t(".sign_up"), new_registration_path, class: "font-medium text-primary hover:underline transition" %>
+            </p>
+          <% elsif controller_name == "registrations" %>
+            <p class="text-sm text-center mt-6 text-zinc-500 hidden md:block">
+              <%= t(".existing_account") %> <%= link_to t(".sign_in"), new_session_path, class: "font-medium text-primary hover:underline transition" %>
+            </p>
+          <% end %>
+        </div>
+      </div>
+
+      <%= render "layouts/shared/footer" %>
+    </div>
+  </div>
+<% end %>

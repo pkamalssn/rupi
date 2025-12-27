@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      /* Email-safe styles */
+      body {
+        background-color: #0f172a;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        line-height: 1.6;
+        margin: 0;
+        padding: 0;
+        color: #1f2937;
+      }
+      .wrapper {
+        padding: 32px 16px;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .container {
+        background-color: #ffffff;
+        border-radius: 16px;
+        margin: 0 auto;
+        max-width: 560px;
+        overflow: hidden;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      }
+      
+      /* Header with gradient */
+      .header {
+        background: linear-gradient(135deg, #059669 0%, #10b981 50%, #d4af37 100%);
+        padding: 32px 40px 28px 40px;
+        text-align: center;
+      }
+      .logo-img {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 12px;
+        background-color: #ffffff;
+        border-radius: 16px;
+        padding: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+      .logo-text {
+        font-size: 28px;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: -0.025em;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin: 0;
+      }
+      .tagline {
+        color: rgba(255,255,255,0.9);
+        font-size: 13px;
+        margin-top: 6px;
+        letter-spacing: 0.5px;
+      }
+      
+      /* Content */
+      .content {
+        padding: 40px;
+        text-align: center;
+      }
+      
+      /* Typography */
+      h1 {
+        color: #111827;
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        margin-top: 0;
+      }
+      p {
+        color: #4b5563;
+        font-size: 16px;
+        margin-bottom: 24px;
+      }
+      
+      /* Actions */
+      .button {
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+        border-radius: 10px;
+        color: #ffffff !important;
+        display: inline-block;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 14px 32px;
+        text-decoration: none;
+        margin: 8px 0 24px 0;
+        box-shadow: 0 4px 14px 0 rgba(5, 150, 105, 0.4);
+      }
+      
+      /* Feature box */
+      .feature-box {
+        background-color: #f0fdf4;
+        border-radius: 12px;
+        padding: 20px;
+        margin: 24px 0;
+        text-align: left;
+      }
+      .feature-title {
+        color: #065f46;
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 12px;
+      }
+      .feature-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      .feature-list li {
+        color: #047857;
+        font-size: 13px;
+        padding: 4px 0;
+        padding-left: 20px;
+        position: relative;
+      }
+      .feature-list li:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #10b981;
+        font-weight: bold;
+      }
+      
+      /* Developer contact */
+      .contact-section {
+        background-color: #f8fafc;
+        padding: 20px;
+        margin-top: 24px;
+        border-radius: 12px;
+        text-align: center;
+      }
+      .contact-section p {
+        margin: 4px 0;
+        font-size: 13px;
+        color: #64748b;
+      }
+      .contact-link {
+        color: #059669;
+        text-decoration: none;
+        font-weight: 500;
+      }
+      
+      /* Footer */
+      .footer {
+        background-color: #f1f5f9;
+        padding: 24px 40px;
+        text-align: center;
+        border-top: 1px solid #e2e8f0;
+      }
+      .footer-text {
+        color: #64748b;
+        font-size: 12px;
+        margin: 4px 0;
+      }
+      .privacy-badge {
+        display: inline-block;
+        background-color: #ecfdf5;
+        color: #065f46;
+        font-size: 11px;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        margin-top: 12px;
+      }
+      .social-links {
+        margin-top: 16px;
+      }
+      .social-links a {
+        color: #64748b;
+        text-decoration: none;
+        font-size: 12px;
+        margin: 0 8px;
+      }
+      .social-links a:hover {
+        color: #059669;
+      }
+      
+      /* Dark mode support for email clients that support it */
+      @media (prefers-color-scheme: dark) {
+        body { background-color: #0f172a !important; }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="wrapper">
+      <div class="container">
+        <!-- RUPI Branded Header with Logo -->
+        <div class="header">
+          <!-- Logo with white background for better visibility -->
+          <img src="https://rupiapp.in/logo-pwa.png" alt="RUPI" class="logo-img">
+          <div class="logo-text">RUPI</div>
+          <div class="tagline">Manage your Rupees easier with RUPI! ✨</div>
+        </div>
+        
+        <!-- Email Content -->
+        <div class="content">
+          <%= yield %>
+          
+          <!-- Developer Contact -->
+          <div class="contact-section">
+            <p><strong>Questions or feedback?</strong></p>
+            <p>
+              <a href="mailto:pkamalssn@gmail.com" class="contact-link">📧 pkamalssn@gmail.com</a>
+              &nbsp;&nbsp;|&nbsp;&nbsp;
+              <a href="https://x.com/storyteller_kp" class="contact-link">𝕏 @storyteller_kp</a>
+            </p>
+          </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+          <p class="footer-text">© <%= Time.current.year %> RUPI. Made with ❤️ in India</p>
+          <p class="footer-text">
+            <a href="https://rupiapp.in" style="color: #059669; text-decoration: none;">rupiapp.in</a>
+          </p>
+          <div class="privacy-badge">🔒 Your data stays private</div>
+          <div class="social-links">
+            <a href="https://github.com/pkamalssn">GitHub</a>
+            <a href="https://x.com/storyteller_kp">Twitter/X</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

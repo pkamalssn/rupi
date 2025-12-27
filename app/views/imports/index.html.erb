@@ -1,0 +1,59 @@
+<%= settings_section title: t(".imports") do %>
+  <div class="space-y-4">
+    <% if @imports.empty? %>
+      <%= render partial: "imports/empty" %>
+    <% else %>
+      <div class="bg-container rounded-lg shadow-border-xs">
+        <%= render partial: "imports/import", collection: @imports.ordered %>
+      </div>
+    <% end %>
+
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+      <%= link_to new_import_path,
+          class: "bg-container-inset flex flex-col items-center justify-center gap-2 text-secondary hover:bg-container-inset-hover rounded-lg px-4 py-3 text-center",
+          data: { turbo_frame: :modal } do %>
+        <%= icon("file-spreadsheet") %>
+        <span class="text-xs">CSV Import</span>
+      <% end %>
+
+      <%= link_to new_bank_statement_path,
+          class: "bg-container-inset flex flex-col items-center justify-center gap-2 text-accent hover:bg-container-inset-hover rounded-lg px-4 py-3 text-center border border-accent/20" do %>
+        <%= icon("building-2") %>
+        <span class="text-xs">Bank Statement</span>
+      <% end %>
+
+      <%= link_to new_bank_statement_path(type: "credit_card"),
+          class: "bg-container-inset flex flex-col items-center justify-center gap-2 text-purple-600 hover:bg-container-inset-hover rounded-lg px-4 py-3 text-center border border-purple-200" do %>
+        <%= icon("credit-card") %>
+        <span class="text-xs">Credit Card</span>
+      <% end %>
+
+      <%= link_to new_loan_document_import_path,
+          class: "bg-container-inset flex flex-col items-center justify-center gap-2 text-green-600 hover:bg-container-inset-hover rounded-lg px-4 py-3 text-center border border-green-200" do %>
+        <%= icon("sparkles") %>
+        <span class="text-xs whitespace-nowrap">AI Loan Import</span>
+      <% end %>
+    </div>
+  </div>
+<% end %>
+
+<% if Current.user.admin? %>
+  <%= settings_section title: t(".exports") do %>
+    <div class="space-y-4">
+      <div class="bg-container rounded-lg shadow-border-xs">
+        <%= turbo_frame_tag "family_exports", src: family_exports_path, loading: :lazy do %>
+          <div class="mt-4 text-center text-secondary py-8">
+            <div class="animate-spin inline-block h-4 w-4 border-2 border-secondary border-t-transparent rounded-full"></div>
+          </div>
+        <% end %>
+      </div>
+
+      <%= link_to new_family_export_path,
+          class: "bg-container-inset flex items-center justify-center gap-2 text-secondary mt-1 hover:bg-container-inset-hover rounded-lg px-4 py-2 w-full text-center",
+          data: { turbo_frame: :modal } do %>
+        <%= icon("plus") %>
+        <%= t(".new_export") %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

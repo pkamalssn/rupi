@@ -1,0 +1,83 @@
+<%# locals: (import:) %>
+
+<%# Auto-refresh every 2 seconds while importing %>
+<% if import.importing? %>
+  <meta http-equiv="refresh" content="2">
+<% end %>
+
+<div class="h-full flex flex-col justify-center items-center py-12">
+  <div class="space-y-6 max-w-md w-full px-4">
+    
+    <%# Animated progress bar %>
+    <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+      <div class="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 animate-pulse" 
+           style="width: 100%; animation: shimmer 2s infinite linear;">
+      </div>
+    </div>
+    
+    <style>
+      @keyframes shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+      }
+    </style>
+
+    <%# Status icon %>
+    <div class="mx-auto bg-blue-100 h-16 w-16 rounded-full flex items-center justify-center">
+      <div class="animate-spin">
+        <%= icon "loader-2", class: "w-8 h-8 text-blue-600" %>
+      </div>
+    </div>
+
+    <%# Status text %>
+    <div class="text-center space-y-2">
+      <h1 class="font-semibold text-primary text-2xl">
+        <%= import.is_a?(BankStatementImport) ? "Processing Bank Statement" : "Import in Progress" %>
+      </h1>
+      <p class="text-sm text-secondary">
+        <% if import.is_a?(BankStatementImport) %>
+          Parsing your <%= import.bank_name.gsub('_', ' ') %> statement and extracting transactions...
+        <% else %>
+          Your import is being processed. This usually takes a few seconds.
+        <% end %>
+      </p>
+      <p class="text-xs text-subdued mt-2">
+        ⏳ Page will refresh automatically when complete
+      </p>
+    </div>
+
+    <%# Progress steps %>
+    <div class="bg-container-inset rounded-lg p-4 space-y-3">
+      <div class="flex items-center gap-3">
+        <div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
+          <%= icon "check", class: "w-3 h-3 text-white" %>
+        </div>
+        <span class="text-sm text-primary">File uploaded</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center animate-pulse">
+          <div class="w-2 h-2 bg-white rounded-full"></div>
+        </div>
+        <span class="text-sm text-primary">Parsing transactions...</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center">
+          <span class="text-xs text-gray-500">3</span>
+        </div>
+        <span class="text-sm text-secondary">Categorizing with AI</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center">
+          <span class="text-xs text-gray-500">4</span>
+        </div>
+        <span class="text-sm text-secondary">Complete</span>
+      </div>
+    </div>
+
+    <%# Action buttons %>
+    <div class="space-y-2 flex flex-col pt-2">
+      <%= render DS::Link.new(text: "Check Status", href: import_path(import), variant: "ghost", full_width: true) %>
+      <%= render DS::Link.new(text: "Continue Using App", href: root_path, variant: "secondary", full_width: true) %>
+    </div>
+  </div>
+</div>

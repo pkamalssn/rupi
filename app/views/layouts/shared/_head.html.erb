@@ -1,0 +1,40 @@
+<head>
+  <title><%= content_for(:title) || product_name %></title>
+
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= stylesheet_link_tag "tailwind", "data-turbo-track": "reload" %>
+
+  <%# Plaid removed - using Indian bank statement uploads instead %>
+  <%= combobox_style_tag %>
+
+  <%= javascript_importmap_tags %>
+  <%= render "layouts/dark_mode_check" %>
+  <%= turbo_refreshes_with method: :morph, scroll: :preserve %>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="<%= product_name %>">
+
+  <meta name="msapplication-TileColor" content="#0f172a">
+  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#F9F9F9" media="(prefers-color-scheme: light)">
+
+  <link rel="manifest" href="<%= pwa_manifest_path %>">
+  
+  <!-- Favicon and touch icons -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+
+  <% if Rails.env.production? && (posthog_config = Rails.configuration.x.posthog).try(:api_key).present? %>
+    <%= render "shared/posthog", posthog_api_key: posthog_config.api_key, posthog_host: posthog_config.host %>
+  <% end %>
+
+  <%= yield :head %>
+</head>

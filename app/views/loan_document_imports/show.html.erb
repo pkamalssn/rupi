@@ -1,0 +1,83 @@
+<%# Shows processing status %>
+
+<%= render DS::Dialog.new do |dialog| %>
+  <% dialog.with_header(title: "Loan Document Import") %>
+  <% dialog.with_body do %>
+    <div class="space-y-6">
+      <% if @import.processing? %>
+        <div class="text-center p-8">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h3 class="text-lg font-medium text-primary mb-2">Analyzing Your Document</h3>
+          <p class="text-sm text-secondary">
+            Our AI is extracting loan details from your document. This usually takes 10-30 seconds.
+          </p>
+          <p class="text-xs text-subdued mt-4">
+            This page will refresh automatically when ready.
+          </p>
+        </div>
+
+        <script>
+          setTimeout(function() {
+            window.location.reload();
+          }, 3000);
+        </script>
+
+      <% elsif @import.pending? %>
+        <div class="text-center p-8">
+          <%= lucide_icon "clock", class: "w-12 h-12 mx-auto text-secondary mb-4" %>
+          <h3 class="text-lg font-medium text-primary mb-2">Queued for Processing</h3>
+          <p class="text-sm text-secondary">
+            Your document is in the queue. Processing will begin shortly.
+          </p>
+        </div>
+
+        <script>
+          setTimeout(function() {
+            window.location.reload();
+          }, 2000);
+        </script>
+
+      <% elsif @import.review? %>
+        <div class="text-center p-6 bg-green-50 rounded-lg">
+          <%= lucide_icon "check-circle", class: "w-12 h-12 mx-auto text-green-600 mb-3" %>
+          <h3 class="text-lg font-medium text-green-800 mb-2">Analysis Complete!</h3>
+          <p class="text-sm text-green-700">
+            We've extracted the loan details. Please review and confirm.
+          </p>
+        </div>
+
+        <div class="flex justify-center pt-4">
+          <%= link_to "Review Extracted Data", review_loan_document_import_path(@import), class: "btn btn--primary" %>
+        </div>
+
+      <% elsif @import.complete? %>
+        <div class="text-center p-6 bg-green-50 rounded-lg">
+          <%= lucide_icon "party-popper", class: "w-12 h-12 mx-auto text-green-600 mb-3" %>
+          <h3 class="text-lg font-medium text-green-800 mb-2">Loan Account Created!</h3>
+          <p class="text-sm text-green-700">
+            Your loan has been successfully added to your accounts.
+          </p>
+        </div>
+
+        <div class="flex justify-center gap-3 pt-4">
+          <%= link_to "View Loan Account", account_path(@import.account), class: "btn btn--primary" %>
+          <%= link_to "Import Another", new_loan_document_import_path, class: "btn btn--ghost" %>
+        </div>
+
+      <% elsif @import.failed? %>
+        <div class="text-center p-6 bg-red-50 rounded-lg">
+          <%= lucide_icon "alert-triangle", class: "w-12 h-12 mx-auto text-red-600 mb-3" %>
+          <h3 class="text-lg font-medium text-red-800 mb-2">Processing Failed</h3>
+          <p class="text-sm text-red-700">
+            <%= @import.error || "An error occurred while processing your document." %>
+          </p>
+        </div>
+
+        <div class="flex justify-center gap-3 pt-4">
+          <%= link_to "Try Again", new_loan_document_import_path, class: "btn btn--primary" %>
+          <%= link_to "Cancel", new_loan_path, class: "btn btn--ghost" %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

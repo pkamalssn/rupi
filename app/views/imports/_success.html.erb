@@ -1,0 +1,140 @@
+<%# locals: (import:) %>
+
+<%
+  # Get import statistics
+  imported_entries = import.family.entries.where(import_id: import.id)
+  transaction_count = imported_entries.joins("INNER JOIN transactions ON transactions.id = entries.entryable_id AND entries.entryable_type = 'Transaction'").count
+  
+  # Get categorization stats
+  categorized_count = 0
+  uncategorized_count = 0
+  if import.respond_to?(:account) && import.account.present?
+    txns = Transaction.joins(:entry).where(entries: { import_id: import.id })
+    categorized_count = txns.where.not(category_id: nil).count
+    uncategorized_count = txns.where(category_id: nil).count
+  else
+    # Check across all transactions from this import
+    txns = Transaction.joins(:entry).where(entries: { import_id: import.id })
+    categorized_count = txns.where.not(category_id: nil).count
+    uncategorized_count = txns.where(category_id: nil).count
+  end
+  
+  total_amount = imported_entries.sum(:amount).abs
+%>
+
+<div class="h-full flex flex-col justify-center items-center py-8">
+  <div class="space-y-6 max-w-md w-full px-4">
+    
+    <%# Success icon %>
+    <div class="mx-auto bg-green-100 h-20 w-20 rounded-full flex items-center justify-center">
+      <%= icon "check-circle-2", class: "w-10 h-10 text-green-600" %>
+    </div>
+
+    <%# Success message %>
+    <div class="text-center space-y-2">
+      <h1 class="font-bold text-primary text-2xl">🎉 Import Complete!</h1>
+      <p class="text-sm text-secondary">
+        <% if import.is_a?(BankStatementImport) %>
+          Your <%= import.bank_name.gsub('_', ' ') %> statement has been imported successfully.
+        <% else %>
+          Your data has been imported and is ready to use.
+        <% end %>
+      </p>
+    </div>
+
+    <%# Import summary stats %>
+    <div class="bg-container rounded-xl border border-secondary p-6 space-y-4">
+      <h3 class="font-semibold text-primary text-center">Import Summary</h3>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <%# Transactions %>
+        <div class="text-center p-3 bg-blue-50 rounded-lg">
+          <div class="text-2xl font-bold text-blue-700"><%= transaction_count %></div>
+          <div class="text-xs text-blue-600">Transactions</div>
+        </div>
+        
+        <%# Total Amount %>
+        <div class="text-center p-3 bg-purple-50 rounded-lg">
+          <div class="text-2xl font-bold text-purple-700"><%= number_to_currency(total_amount, unit: "₹", precision: 0) %></div>
+          <div class="text-xs text-purple-600">Total Volume</div>
+        </div>
+      </div>
+      
+      <%# Categorization stats %>
+      <% if transaction_count > 0 %>
+        <div class="pt-2 border-t border-secondary">
+          <div class="flex items-center justify-between text-sm">
+            <span class="text-secondary">AI Categorized:</span>
+            <span class="font-medium text-green-600">
+              <%= categorized_count %> of <%= transaction_count %>
+              (<%= ((categorized_count.to_f / transaction_count) * 100).round %>%)
+            </span>
+          </div>
+          
+          <% if uncategorized_count > 0 %>
+            <div class="flex items-center justify-between text-sm mt-1">
+              <span class="text-secondary">Needs Review:</span>
+              <%= link_to transactions_path(q: { categories: ["Uncategorized"], start_date: 1.year.ago.to_date.to_s }), 
+                          class: "font-medium text-yellow-600 hover:text-yellow-700 hover:underline" do %>
+                <%= uncategorized_count %> →
+              <% end %>
+            </div>
+          <% end %>
+          
+          <%# Progress bar %>
+          <div class="mt-3 w-full bg-gray-200 rounded-full h-2">
+            <div class="bg-green-500 h-2 rounded-full" 
+                 style="width: <%= transaction_count > 0 ? ((categorized_count.to_f / transaction_count) * 100).round : 0 %>%">
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%# Actions %>
+    <div class="space-y-2 flex flex-col">
+      <% if uncategorized_count > 0 %>
+        <%= render DS::Link.new(
+          text: "Review #{uncategorized_count} Uncategorized",
+          variant: "primary",
+          full_width: true,
+          href: transactions_path(q: { categories: ["Uncategorized"], start_date: 1.year.ago.to_date.to_s }),
+          icon: "alert-circle"
+        ) %>
+      <% end %>
+      
+      <%= render DS::Link.new(
+        text: "View Dashboard",
+        variant: uncategorized_count > 0 ? "secondary" : "primary",
+        full_width: true,
+        href: root_path,
+        icon: "layout-dashboard"
+      ) %>
+      
+      <% if import.account.present? %>
+        <%= render DS::Link.new(
+          text: "View Account: #{import.account.name}",
+          variant: "secondary",
+          full_width: true,
+          href: account_path(import.account),
+          icon: "wallet"
+        ) %>
+      <% end %>
+      
+      <%= render DS::Link.new(
+        text: "Import Another Statement",
+        variant: "ghost",
+        full_width: true,
+        href: new_bank_statement_path,
+        icon: "upload"
+      ) %>
+    </div>
+
+    <%# Tip %>
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+      <p class="text-xs text-blue-700">
+        💡 <strong>Tip:</strong> Use the AI Assistant to analyze your spending patterns from these transactions!
+      </p>
+    </div>
+  </div>
+</div>
