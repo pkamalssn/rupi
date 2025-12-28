@@ -1,8 +1,8 @@
 class Family::AutoCategorizer
   Error = Class.new(StandardError)
   
-  # Maximum transactions per LLM request (Gemini/OpenAI limit)
-  BATCH_SIZE = 25
+  # Maximum transactions per LLM request (Gemini 2.5-flash with 1M context can handle 100+)
+  BATCH_SIZE = 100
   
   def initialize(family, transaction_ids: [])
     @family = family
