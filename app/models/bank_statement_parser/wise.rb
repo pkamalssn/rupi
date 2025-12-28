@@ -78,6 +78,21 @@ module BankStatementParser
       else
         "EUR" # Default for Wise Europe
       end
+      
+      # ==========================================
+      # METADATA EXTRACTION
+      # ==========================================
+      # Wise format: "Opening balance XX.XX" and "Closing balance XX.XX"
+      if match = text.match(/Opening balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:opening_balance] = parse_amount(match[1])
+      end
+      if match = text.match(/Closing balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:closing_balance] = parse_amount(match[1])
+      end
+      # Also try alternate format
+      if @metadata[:opening_balance].nil? && (match = text.match(/Balance on [\w\s]+ \d{4}.*?([\d,]+\.\d{2})/im))
+        @metadata[:opening_balance] = parse_amount(match[1])
+      end
 
       # Wise PDF format parsing
       # The format has transaction blocks like:

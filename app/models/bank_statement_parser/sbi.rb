@@ -72,11 +72,20 @@ module BankStatementParser
 
     def parse_transactions_from_text(text)
       transactions = []
-
       lines = text.split("\n")
+      
+      # ==========================================
+      # METADATA EXTRACTION
+      # ==========================================
+      if match = text.match(/Opening.*?Balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:opening_balance] = parse_amount(match[1])
+      end
+      if match = text.match(/Closing.*?Balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:closing_balance] = parse_amount(match[1])
+      end
+      
       lines.each do |line|
         # SBI format: "01/01/2024    TRANSACTION DESCRIPTION    500.00 Dr    10000.00"
-        # Also handle: "01-01-2024" format
         next unless line =~ /\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/
 
         parts = line.split(/\s{2,}/)
@@ -85,8 +94,23 @@ module BankStatementParser
         date = parse_date(parts[0])
         next unless date
 
-        amount = parse_amount(parts[2])
-        next unless amount
+        # Find amounts in the line - typically [amount, balance]
+        amounts = line.scan(/([\d,]+\.\d{2})/).flatten.map { |a| parse_amount(a) }
+        next if amounts.empty?
+
+        amount = amounts.first
+        balance = amounts.length >= 2 ? amounts.last : nil
+        next unless amount && amount > 0
+        
+        # SBI uses Dr/Cr indicators
+        is_credit = line.match?(/\bCR\b|CREDIT|SALARY|NEFT.*CR|RTGS.*CR/i)
+        is_debit = line.match?(/\bDR\b|DEBIT|ATM|WITHDRAWAL|UPI|NEFT.*DR|RTGS.*DR/i)
+        
+        if is_credit && !is_debit
+          amount = amount.abs
+        elsif is_debit || !is_credit
+          amount = -amount.abs
+        end
 
         description = clean_description(parts[1])
 
@@ -94,9 +118,45 @@ module BankStatementParser
           date: date,
           amount: amount,
           description: description.presence || "SBI Transaction",
-          notes: "Imported from SBI statement"
+          notes: "Imported from SBI statement",
+          _balance: balance
         }
       end
+      
+      # ==========================================
+      # BALANCE-CHAIN POLARITY VERIFICATION
+      # ==========================================
+      transactions.each_with_index do |txn, idx|
+        next if idx == 0
+        prev_txn = transactions[idx - 1]
+        next unless txn[:_balance] && prev_txn[:_balance]
+        
+        prev_balance = prev_txn[:_balance].to_f
+        curr_balance = txn[:_balance].to_f
+        raw_amount = txn[:amount].abs
+        
+        if (prev_balance + raw_amount - curr_balance).abs < 1.0
+          txn[:amount] = raw_amount
+        elsif (prev_balance - raw_amount - curr_balance).abs < 1.0
+          txn[:amount] = -raw_amount
+        end
+      end
+      
+      # ==========================================
+      # METADATA DERIVATION
+      # ==========================================
+      if @metadata[:opening_balance].nil? && transactions.any? && transactions.first[:_balance]
+        first_txn = transactions.first
+        @metadata[:opening_balance] = (first_txn[:_balance] - first_txn[:amount]).round(2)
+      end
+      if transactions.any? && transactions.last[:_balance]
+        @metadata[:closing_balance] ||= transactions.last[:_balance]
+      end
+      
+      # ==========================================
+      # CLEANUP
+      # ==========================================
+      transactions.each { |t| t.delete(:_balance) }
 
       transactions
     end

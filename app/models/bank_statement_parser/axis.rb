@@ -69,11 +69,22 @@ module BankStatementParser
 
     def parse_transactions_from_text(text)
       transactions = []
-
       lines = text.split("\n")
+      
+      # ==========================================
+      # METADATA EXTRACTION
+      # ==========================================
+      # Axis format: "Opening Balance: X,XXX.XX" and "Closing Balance: X,XXX.XX"
+      if match = text.match(/Opening.*?Balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:opening_balance] = parse_amount(match[1])
+      end
+      if match = text.match(/Closing.*?Balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:closing_balance] = parse_amount(match[1])
+      end
+      
       lines.each do |line|
-        # Axis format varies - try common patterns
-        next unless line =~ /\d{1,2}-\d{1,2}-\d{4}/ || line =~ /\d{2}\/\d{2}\/\d{4}/
+        # Axis format varies - try common patterns: DD-MM-YYYY or DD/MM/YYYY
+        next unless line =~ /\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/
 
         parts = line.split(/\s{2,}/)
         next unless parts.length >= 2
@@ -81,12 +92,23 @@ module BankStatementParser
         date = parse_date(parts[0])
         next unless date
 
-        # Find amount in the line
-        amount_match = line.match(/([\d,]+\.\d{2})/)
-        next unless amount_match
+        # Find amounts in the line - typically [amount, balance]
+        amounts = line.scan(/([\d,]+\.\d{2})/).flatten.map { |a| parse_amount(a) }
+        next if amounts.empty?
 
-        amount = parse_amount(amount_match[1])
-        next unless amount
+        amount = amounts.first
+        balance = amounts.length >= 2 ? amounts.last : nil
+        next unless amount && amount > 0
+        
+        # Determine polarity based on keywords
+        is_credit = line.match?(/\bCR\b|CREDIT|NEFT.*CR|RTGS.*CR|IMPS.*CR|DEPOSIT|SALARY/i)
+        is_debit = line.match?(/\bDR\b|DEBIT|ATM|WITHDRAWAL|NEFT.*DR|RTGS.*DR|IMPS.*DR|POS|UPI/i)
+        
+        if is_credit && !is_debit
+          amount = amount.abs
+        elsif is_debit || !is_credit
+          amount = -amount.abs
+        end
 
         description = clean_description(parts[1])
 
@@ -94,9 +116,45 @@ module BankStatementParser
           date: date,
           amount: amount,
           description: description.presence || "Axis Transaction",
-          notes: "Imported from Axis statement"
+          notes: "Imported from Axis statement",
+          _balance: balance
         }
       end
+      
+      # ==========================================
+      # BALANCE-CHAIN POLARITY VERIFICATION
+      # ==========================================
+      transactions.each_with_index do |txn, idx|
+        next if idx == 0
+        prev_txn = transactions[idx - 1]
+        next unless txn[:_balance] && prev_txn[:_balance]
+        
+        prev_balance = prev_txn[:_balance].to_f
+        curr_balance = txn[:_balance].to_f
+        raw_amount = txn[:amount].abs
+        
+        if (prev_balance + raw_amount - curr_balance).abs < 1.0
+          txn[:amount] = raw_amount  # Credit
+        elsif (prev_balance - raw_amount - curr_balance).abs < 1.0
+          txn[:amount] = -raw_amount  # Debit
+        end
+      end
+      
+      # ==========================================
+      # METADATA DERIVATION
+      # ==========================================
+      if @metadata[:opening_balance].nil? && transactions.any? && transactions.first[:_balance]
+        first_txn = transactions.first
+        @metadata[:opening_balance] = (first_txn[:_balance] - first_txn[:amount]).round(2)
+      end
+      if transactions.any? && transactions.last[:_balance]
+        @metadata[:closing_balance] ||= transactions.last[:_balance]
+      end
+      
+      # ==========================================
+      # CLEANUP
+      # ==========================================
+      transactions.each { |t| t.delete(:_balance) }
 
       transactions
     end

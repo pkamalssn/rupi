@@ -130,6 +130,26 @@ module BankStatementParser
     def parse_transactions_from_text(text)
       transactions = []
       lines = text.split("\n")
+      
+      # ==========================================
+      # METADATA EXTRACTION - Credit Card Specific
+      # ==========================================
+      if match = text.match(/Total Amount Due.*?([\d,]+\.\d{2})/im)
+        @metadata[:total_due] = parse_amount(match[1])
+        @metadata[:closing_balance] = @metadata[:total_due]
+      end
+      
+      if match = text.match(/Minimum.*?Due.*?([\d,]+\.\d{2})/im)
+        @metadata[:minimum_due] = parse_amount(match[1])
+      end
+      
+      if match = text.match(/Payment.*?Due.*?Date.*?(\d{1,2}\s*\w+\s*\d{4})/im)
+        @metadata[:payment_due_date] = parse_date(match[1])
+      end
+      
+      if match = text.match(/Previous.*?Balance.*?([\d,]+\.\d{2})/im)
+        @metadata[:opening_balance] = parse_amount(match[1])
+      end
 
       lines.each do |line|
         next unless line.match?(/\d{1,2}[-\/]\d{1,2}[-\/]\d{2,4}/)

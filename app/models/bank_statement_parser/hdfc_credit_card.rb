@@ -29,6 +29,38 @@ module BankStatementParser
       transactions = []
       lines = text.split("\n")
       
+      # ==========================================
+      # METADATA EXTRACTION - Credit Card Specific
+      # ==========================================
+      # HDFC CC format: "TOTAL AMOUNT DUE C3,24,928.00"
+      # "MINIMUM DUE C16,250.00"
+      # "DUE DATE 12 Jan, 2026"
+      
+      if match = text.match(/TOTAL AMOUNT DUE.*?[C₹]\s*([\d,]+\.\d{2})/im)
+        @metadata[:total_due] = parse_amount(match[1])
+        @metadata[:closing_balance] = @metadata[:total_due]  # For CC, total due = closing balance
+      end
+      
+      if match = text.match(/MINIMUM.*?DUE.*?[C₹]\s*([\d,]+\.\d{2})/im)
+        @metadata[:minimum_due] = parse_amount(match[1])
+      end
+      
+      if match = text.match(/DUE DATE\s*(\d{1,2}\s*\w+,?\s*\d{4})/im)
+        @metadata[:payment_due_date] = parse_date(match[1])
+      end
+      
+      if match = text.match(/PURCHASES.*?DEBIT.*?[C₹]\s*([\d,]+\.\d{2})/im)
+        @metadata[:purchases] = parse_amount(match[1])
+      end
+      
+      if match = text.match(/PAYMENTS.*?CREDITS.*?RECEIVED.*?[C₹]\s*([\d,]+\.\d{2})/im)
+        @metadata[:payments_received] = parse_amount(match[1])
+      end
+      
+      if match = text.match(/PREVIOUS STATEMENT.*?DUES.*?[C₹]\s*([\d,]+\.\d{2})/im)
+        @metadata[:opening_balance] = parse_amount(match[1])  # Previous dues = opening balance
+      end
+      
       lines.each do |line|
         # Skip irrelevant lines
         next if line.strip.empty?
