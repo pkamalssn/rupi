@@ -653,16 +653,35 @@ class BankStatementImport < Import
       "Cash" => ["cash"],
       "Miscellaneous" => ["misc", "other", "general"]
     }
+    
+    # Generic/dangerous keywords that need word-boundary matching
+    generic_keywords = %w[
+      hdfc icici axis sbi kotak yes indusind
+      paytm phonepe gpay google pay upi
+      jio airtel vi bsnl vodafone
+      amazon flipkart
+      transfer credit debit payment
+      food hotel coffee shop store mall
+    ]
 
+    # Normalize description (same as CategoryRule)
+    normalized = CategoryRule.normalize_description(description)
     description_lower = description.downcase
     
-    # Find matching category - more specific matches first (already ordered)
+    # Find matching category with improved matching
     category_keywords.each do |category_name, keywords|
-      if keywords.any? { |keyword| description_lower.include?(keyword) }
-        matched_keyword = keywords.find { |keyword| description_lower.include?(keyword) }
-        
-        # Log the rule match for future learning (optional)
-        Rails.logger.debug { "CategoryRule: '#{description}' matched '#{matched_keyword}' -> '#{category_name}'" }
+      matched_keyword = keywords.find do |keyword|
+        if generic_keywords.any? { |g| keyword.include?(g) }
+          # Word-boundary matching for generic keywords
+          normalized.match?(/\b#{Regexp.escape(keyword)}\b/)
+        else
+          # Standard substring matching for specific keywords
+          normalized.include?(keyword) || description_lower.include?(keyword)
+        end
+      end
+      
+      if matched_keyword
+        Rails.logger.debug { "Keyword matched: '#{description}' matched '#{matched_keyword}' -> '#{category_name}'" }
         
         return family.categories.find_or_create_by(name: category_name) do |cat|
           # Set defaults for new categories
