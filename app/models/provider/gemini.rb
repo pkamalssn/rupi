@@ -6,7 +6,7 @@ class Provider::Gemini < Provider
 
   # Supported Gemini model prefixes
   DEFAULT_GEMINI_MODEL_PREFIXES = %w[gemini-2.5 gemini-2.0 gemini-1.5 gemini-3 gemini-exp]
-  DEFAULT_MODEL = "gemini-2.5-flash"
+  DEFAULT_MODEL = "gemini-3-flash-preview"  # December 2025: Latest and fastest!
 
   class << self
     def effective_model
