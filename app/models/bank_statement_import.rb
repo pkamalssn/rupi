@@ -475,28 +475,188 @@ class BankStatementImport < Import
   def find_category(description)
     return nil if description.blank?
     
-    # Simple keyword-based categorization for Indian transactions
+    # Comprehensive keyword-based categorization for Indian transactions
+    # Ordered by specificity - more specific matches first
     category_keywords = {
-      "Food & Drink" => ["swiggy", "zomato", "restaurant", "cafe", "pizza", "burger", "grocery", "bigbasket", "blinkit", "dunzo", "instamart"],
-      "Shopping" => ["amazon", "flipkart", "myntra", "ajio", "shopping", "store", "mall", "nykaa", "meesho"],
-      "Transportation" => ["uber", "ola", "rapido", "metro", "petrol", "fuel", "parking", "fastag", "irctc", "railway", "makemytrip"],
-      "Utilities" => ["electricity", "water", "gas", "mobile", "internet", "recharge", "bill", "jio", "airtel", "vi ", "bsnl"],
-      "Healthcare" => ["hospital", "pharmacy", "doctor", "medical", "health", "apollo", "medplus", "practo"],
-      "Education" => ["school", "college", "fees", "education", "course", "udemy", "coursera", "byju"],
-      "Entertainment" => ["netflix", "hotstar", "prime video", "spotify", "movie", "pvr", "inox", "bookmyshow"],
-      "Subscriptions" => ["subscription", "membership", "annual", "monthly", "renewal"],
-      "Investments & Savings" => ["mutual fund", "sip", "ppf", "epf", "nps", "stock", "investment", "zerodha", "groww", "kuvera"],
-      "Insurance" => ["insurance", "lic", "policy", "premium", "hdfc life", "icici pru"],
-      "Loan Payments" => ["emi", "loan", "housing", "vehicle", "personal loan", "home loan"],
-      "Credit Card" => ["credit card", "card payment", "cc bill"],
-      "Taxes" => ["tax", "tds", "gst", "income tax", "advance tax"],
-      "Transfers" => ["transfer", "neft", "rtgs", "imps", "upi"] # Low priority - often internal
+      # ==========================================
+      # FOOD & DINING (Specific first)
+      # ==========================================
+      "Swiggy/Zomato" => ["swiggy", "zomato", "uber eats", "dunzo", "blinkit food"],
+      "Groceries" => ["bigbasket", "blinkit", "zepto", "instamart", "dmart", "reliance fresh", "more supermarket", "spencers", "grocery", "vegetables", "fruits", "kirana"],
+      "Restaurants" => ["restaurant", "hotel ", "dhaba", "cafe ", "dining", "eat ", "food court", "biryani", "dosa", "pizza hut", "dominos", "mcdonalds", "kfc", "burger king", "subway"],
+      "Coffee & Cafe" => ["starbucks", "cafe coffee day", "ccd", "barista", "costa coffee", "blue tokai", "third wave", "coffee"],
+      "Food & Dining" => ["food", "lunch", "dinner", "breakfast", "tiffin", "canteen", "mess", "bakery", "sweet shop", "mithai"],
+      
+      # ==========================================
+      # SHOPPING (Specific first)
+      # ==========================================
+      "Amazon/Flipkart" => ["amazon", "flipkart", "myntra", "ajio", "meesho", "snapdeal", "shopclues", "tata cliq", "jiomart"],
+      "Clothing" => ["clothing", "fashion", "garments", "fabindia", "westside", "pantaloons", "lifestyle", "max fashion", "zudio"],
+      "Electronics" => ["croma", "reliance digital", "vijay sales", "electronics", "mobile", "laptop", "computer"],
+      "Shopping" => ["mall", "store", "retail", "bazaar", "mart", "shop", "decathlon", "ikea", "nykaa"],
+      
+      # ==========================================
+      # TRANSPORTATION (Specific first)
+      # ==========================================
+      "Uber/Ola/Rapido" => ["uber", "ola", "rapido", "meru", "bluedart cab", "shuttle"],
+      "Metro/Train" => ["metro", "irctc", "railway", "train", "dmrc", "bmrc", "cmrl"],
+      "Petrol/Fuel" => ["petrol", "fuel", "diesel", "hp ", "bharat petroleum", "iocl", "bpcl", "hpcl", "indian oil", "shell", "reliance petrol"],
+      "Parking/Toll/FASTag" => ["fastag", "toll", "parking", "nhai", "toll plaza"],
+      "Auto/Taxi" => ["auto", "taxi", "cab", "rickshaw"],
+      "Flights" => ["indigo", "airindia", "spicejet", "vistara", "goair", "akasaair", "flight", "airfare", "aviation"],
+      "Travel Booking" => ["makemytrip", "goibibo", "yatra", "cleartrip", "ixigo", "redbus", "abhibus", "easemytrip"],
+      "Hotels/Stays" => ["oyo", "treebo", "fab hotels", "airbnb", "booking.com", "trivago", "taj ", "oberoi", "itc ", "marriott", "hyatt", "hotel"],
+      "Transportation" => ["transport", "travel", "journey", "trip"],
+      
+      # ==========================================
+      # UTILITIES & BILLS
+      # ==========================================
+      "Electricity" => ["electricity", "power bill", "bescom", "tata power", "adani electricity", "torrent power", "bses", "dhbvn", "uppcl", "msedcl", "tneb"],
+      "Mobile/Internet" => ["jio", "airtel", "vodafone", "vi ", "bsnl", "recharge", "postpaid", "prepaid", "broadband", "act fibernet", "hathway", "tata sky broadband"],
+      "DTH/Cable" => ["tata sky", "dish tv", "airtel dth", "sun direct", "d2h", "cable"],
+      "Water Bill" => ["water bill", "bwssb", "water supply", "jalboard"],
+      "Gas/LPG" => ["lpg", "gas cylinder", "indane", "bharat gas", "hp gas", "piped gas", "igl", "mahanagar gas", "gail"],
+      "Utilities & Bills" => ["utility", "bill payment", "bills"],
+      
+      # ==========================================
+      # HEALTHCARE
+      # ==========================================
+      "Medicines" => ["pharmacy", "medplus", "apollo pharmacy", "netmeds", "1mg", "pharmeasy", "tata 1mg", "medicine", "tablets", "drugs"],
+      "Doctor/Consultation" => ["doctor", "dr ", "clinic", "consultation", "opd", "practo", "apollo 24|7"],
+      "Hospital" => ["hospital", "fortis", "apollo hospital", "max hospital", "medanta", "narayana", "aiims", "manipal hospital", "aster", "columbia asia"],
+      "Healthcare" => ["health", "medical", "diagnostic", "lab test", "pathology", "radiology", "scan", "mri", "ct scan"],
+      
+      # ==========================================
+      # EDUCATION
+      # ==========================================
+      "School/College Fees" => ["school fees", "college fees", "tuition fees", "admission", "university", "institute"],
+      "Coaching/Tuition" => ["coaching", "tuition", "kota", "allen", "fiitjee", "resonance", "aakash", "byju", "unacademy", "vedantu", "physics wallah"],
+      "Online Courses" => ["udemy", "coursera", "skillshare", "linkedin learning", "upgrad", "great learning", "simplilearn"],
+      "Education" => ["education", "learning", "study", "exam", "books", "stationery", "academic"],
+      
+      # ==========================================
+      # ENTERTAINMENT & SUBSCRIPTIONS
+      # ==========================================
+      "Netflix/OTT" => ["netflix", "hotstar", "prime video", "amazon prime", "sonyliv", "zee5", "alt balaji", "mxplayer", "jio cinema", "ott"],
+      "Spotify/Music" => ["spotify", "gaana", "wynk", "apple music", "youtube music", "music"],
+      "Movies/Theatre" => ["pvr", "inox", "cinepolis", "bookmyshow", "movie", "cinema", "theatre", "film"],
+      "Gaming" => ["playstation", "xbox", "steam", "gaming", "games", "valorant", "pubg"],
+      "Subscriptions" => ["subscription", "membership", "renewal", "premium", "annual plan"],
+      "Entertainment" => ["entertainment", "fun", "recreation", "party", "event", "show"],
+      
+      # ==========================================
+      # HOUSING & HOME
+      # ==========================================
+      "Rent" => ["rent", "house rent", "flat rent", "pg ", "hostel"],
+      "Society Maintenance" => ["maintenance", "society", "association", "apartment maintenance", "resident welfare"],
+      "Domestic Help" => ["maid", "cook", "driver salary", "domestic", "household staff", "watchman"],
+      "Home Repairs" => ["repair", "plumber", "electrician", "carpenter", "ac service", "home service", "urban company", "urbanclap"],
+      "Furniture/Appliances" => ["furniture", "appliance", "godrej", "samsung ", "lg ", "whirlpool", "pepperfry", "urban ladder", "home centre"],
+      
+      # ==========================================
+      # LOANS & EMI
+      # ==========================================
+      "Home Loan EMI" => ["home loan", "housing loan", "homeloan", "hdfc home", "icici home", "sbi home", "axis home", "lic housing", "pnb housing"],
+      "Car/Vehicle Loan EMI" => ["car loan", "vehicle loan", "auto loan", "two wheeler loan", "bike loan"],
+      "Personal Loan EMI" => ["personal loan", "personalloan", "bajaj finserv", "tata capital", "fullerton"],
+      "Education Loan EMI" => ["education loan", "study loan", "credila", "avanse"],
+      "Credit Card Payment" => ["credit card", "cc payment", "card payment", "cc bill", "credit bill"],
+      "Loan Payments" => ["emi", "loan", "installment", "equated monthly"],
+      
+      # ==========================================
+      # INVESTMENTS & SAVINGS
+      # ==========================================
+      "Mutual Funds SIP" => ["sip", "mutual fund", "mf sip", "systematic investment", "groww", "zerodha coin", "kuvera", "paytm money", "et money"],
+      "Stocks/Trading" => ["stock", "share", "trading", "zerodha", "upstox", "angel", "5paisa", "icicidirect", "sharekhan", "kotak securities", "demat"],
+      "PPF/EPF" => ["ppf", "epf", "provident fund", "pf contribution", "employee pf"],
+      "NPS" => ["nps", "national pension", "pension scheme"],
+      "Fixed Deposit" => ["fixed deposit", "fd ", "term deposit"],
+      "Recurring Deposit" => ["recurring deposit", "rd ", "monthly deposit"],
+      "Gold/Digital Gold" => ["gold", "digital gold", "sovereign gold", "gold bond", "augmont", "safegold", "mmtc gold"],
+      "Investments & Savings" => ["investment", "invest", "portfolio", "wealth", "saving"],
+      
+      # ==========================================
+      # INSURANCE
+      # ==========================================
+      "Health Insurance" => ["health insurance", "medical insurance", "mediclaim", "star health", "care health", "niva bupa", "hdfc ergo health"],
+      "Life Insurance (LIC)" => ["lic ", "life insurance", "term plan", "endowment", "max life", "hdfc life", "icici pru", "sbi life", "bajaj life"],
+      "Vehicle Insurance" => ["motor insurance", "car insurance", "bike insurance", "vehicle insurance", "national insurance", "new india insurance"],
+      "Insurance" => ["insurance", "policy", "premium", "renewal"],
+      
+      # ==========================================
+      # TAXES
+      # ==========================================
+      "Income Tax" => ["income tax", "it return", "itr ", "efiling"],
+      "Advance Tax" => ["advance tax", "adv tax", "challan 280"],
+      "GST" => ["gst ", "goods and service", "gstin"],
+      "Taxes" => ["tax", "tds", "professional tax", "property tax", "municipal tax"],
+      
+      # ==========================================
+      # PERSONAL CARE & FITNESS
+      # ==========================================
+      "Gym/Fitness" => ["gym", "fitness", "cult ", "cult.fit", "cure.fit", "yoga", "crossfit", "gold gym", "anytime fitness"],
+      "Salon/Grooming" => ["salon", "parlour", "haircut", "spa", "barbershop", "grooming", "jawed habib", "lakme salon", "naturals"],
+      "Personal Care" => ["personal care", "cosmetics", "beauty", "skincare", "nykaa", "purplle"],
+      
+      # ==========================================
+      # KIDS & FAMILY
+      # ==========================================
+      "Childcare" => ["childcare", "daycare", "creche", "nanny", "babysitter"],
+      "Kids Education" => ["kids school", "play school", "nursery", "kidzee", "eurokids", "podar"],
+      "Toys & Games" => ["toys", "hamleys", "firstcry", "kids zone", "game zone"],
+      
+      # ==========================================
+      # CELEBRATIONS & OCCASIONS
+      # ==========================================
+      "Wedding/Functions" => ["wedding", "marriage", "shaadi", "wedding venue", "catering", "band baja", "decorator"],
+      "Festivals/Puja" => ["pooja", "puja", "temple", "mandir", "diwali", "holi", "eid", "christmas", "festival", "ganesh", "durga"],
+      "Gifts" => ["gift", "present", "archies", "ferns n petals", "fnp ", "igp ", "winni"],
+      "Celebrations" => ["birthday", "anniversary", "party", "celebration", "function", "event"],
+      
+      # ==========================================
+      # DONATIONS & CHARITY
+      # ==========================================
+      "Temple/Religious" => ["temple", "church", "mosque", "gurudwara", "religious", "donation to temple", "devsthan"],
+      "NGO/Charity" => ["ngo", "charity", "donation", "relief fund", "help", "support", "foundation"],
+      "Donations & Charity" => ["donate", "contribution", "seva"],
+      
+      # ==========================================
+      # FEES & CHARGES
+      # ==========================================
+      "Bank Charges" => ["bank charge", "service charge", "account maintenance", "min balance", "annual charge", "folio", "dpamount"],
+      "ATM Fees" => ["atm fee", "atm charge", "cash withdrawal fee"],
+      "Card AMC" => ["card amc", "annual fee", "membership fee", "card charges"],
+      "Fees & Charges" => ["fee", "charge", "penalty", "fine", "late fee"],
+      
+      # ==========================================
+      # TRANSFERS (Low priority - often internal)
+      # ==========================================
+      "Transfers" => ["transfer", "neft", "rtgs", "imps", "upi ", "p2p", "p2m", "a/c transfer"],
+      
+      # ==========================================
+      # MISCELLANEOUS
+      # ==========================================
+      "ATM Withdrawal" => ["atm withdrawal", "cash withdrawal", "atm wd", "atm cash"],
+      "Cash" => ["cash"],
+      "Miscellaneous" => ["misc", "other", "general"]
     }
 
     description_lower = description.downcase
+    
+    # Find matching category - more specific matches first (already ordered)
     category_keywords.each do |category_name, keywords|
       if keywords.any? { |keyword| description_lower.include?(keyword) }
-        return family.categories.find_or_create_by(name: category_name)
+        matched_keyword = keywords.find { |keyword| description_lower.include?(keyword) }
+        
+        # Log the rule match for future learning (optional)
+        Rails.logger.debug { "CategoryRule: '#{description}' matched '#{matched_keyword}' -> '#{category_name}'" }
+        
+        return family.categories.find_or_create_by(name: category_name) do |cat|
+          # Set defaults for new categories
+          cat.color = "#6b7280"  # Gray as default
+          cat.lucide_icon = "tag"
+          cat.classification = "expense"
+        end
       end
     end
 
