@@ -758,7 +758,7 @@ class BankStatementImport < Import
     ]
 
     # Normalize description (same as CategoryRule)
-    normalized = CategoryRule.normalize_description(description)
+    normalized = CategoryRule.normalize_light(description)
     description_lower = description.downcase
     
     # Find matching category with improved matching
