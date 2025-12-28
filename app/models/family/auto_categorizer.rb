@@ -1,6 +1,9 @@
 class Family::AutoCategorizer
   Error = Class.new(StandardError)
-
+  
+  # Maximum transactions per LLM request (Gemini/OpenAI limit)
+  BATCH_SIZE = 25
+  
   def initialize(family, transaction_ids: [])
     @family = family
     @transaction_ids = transaction_ids
@@ -23,52 +26,71 @@ class Family::AutoCategorizer
       return 0
     end
 
-    result = llm_provider.auto_categorize(
-      transactions: transactions_input,
-      user_categories: categories_input,
-      family: family
-    )
+    # =====================================================
+    # BATCHING: Process transactions in groups of 25
+    # This avoids the LLM token limit while ensuring ALL
+    # transactions get categorized
+    # =====================================================
+    total_modified = 0
+    all_transactions = scope.to_a
+    
+    all_transactions.each_slice(BATCH_SIZE).with_index do |batch, batch_index|
+      Rails.logger.info("Processing batch #{batch_index + 1}/#{(all_transactions.size.to_f / BATCH_SIZE).ceil} (#{batch.size} transactions)")
+      
+      batch_input = batch.map do |transaction|
+        {
+          id: transaction.id,
+          amount: transaction.entry.amount.abs,
+          classification: transaction.entry.classification,
+          description: [ transaction.entry.name, transaction.entry.notes ].compact.reject(&:empty?).join(" "),
+          merchant: transaction.merchant&.name
+        }
+      end
+      
+      result = llm_provider.auto_categorize(
+        transactions: batch_input,
+        user_categories: categories_input,
+        family: family
+      )
 
-    unless result.success?
-      Rails.logger.error("Failed to auto-categorize transactions for family #{family.id}: #{result.error.message}")
-      return 0
-    end
+      unless result.success?
+        Rails.logger.error("Failed to auto-categorize batch #{batch_index + 1} for family #{family.id}: #{result.error.message}")
+        next  # Continue with next batch instead of failing entirely
+      end
 
-    modified_count = 0
-    scope.each do |transaction|
-      auto_categorization = result.data.find { |c| c.transaction_id == transaction.id }
+      batch.each do |transaction|
+        auto_categorization = result.data.find { |c| c.transaction_id == transaction.id }
+        category_id = categories_input.find { |c| c[:name] == auto_categorization&.category_name }&.dig(:id)
 
-      category_id = categories_input.find { |c| c[:name] == auto_categorization&.category_name }&.dig(:id)
-
-      if category_id.present?
-        was_modified = transaction.enrich_attribute(
-          :category_id,
-          category_id,
-          source: "ai"
-        )
-        transaction.lock_attr!(:category_id)
-        # enrich_attribute returns true if the transaction was actually modified
-        modified_count += 1 if was_modified
-        
-        # ==========================================
-        # RULE LEARNING: Create a rule for future transactions
-        # This makes future categorization deterministic (no AI call needed)
-        # ==========================================
-        if was_modified
-          category = Category.find_by(id: category_id)
-          if category
-            CategoryRule.create_from_ai_categorization(
-              description: transaction.entry.name,
-              category: category,
-              family: family,
-              confidence: 0.85  # Slightly lower confidence for AI-generated rules
-            )
+        if category_id.present?
+          was_modified = transaction.enrich_attribute(
+            :category_id,
+            category_id,
+            source: "ai"
+          )
+          transaction.lock_attr!(:category_id)
+          total_modified += 1 if was_modified
+          
+          # Create rule for future transactions
+          if was_modified
+            category = Category.find_by(id: category_id)
+            if category
+              CategoryRule.create_from_ai_categorization(
+                description: transaction.entry.name,
+                category: category,
+                family: family,
+                confidence: 0.85
+              )
+            end
           end
         end
       end
+      
+      Rails.logger.info("Batch #{batch_index + 1} complete: #{total_modified} total modified so far")
     end
 
-    modified_count
+    Rails.logger.info("Auto-categorization complete: #{total_modified} transactions categorized")
+    total_modified
   end
 
   private
