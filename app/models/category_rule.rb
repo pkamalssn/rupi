@@ -4,33 +4,36 @@
 # 
 # RULE LIFECYCLE:
 # 1. AI creates rule as "candidate" (status: candidate, confidence: 0.65)
-# 2. After N matches (default: 2), rule promoted to "active" but "probationary"
-# 3. If overridden during probation → demote immediately
+# 2. After N matches, rule promoted to "active" but "probationary"
+# 3. If overridden during probation → quarantined (not deleted, for debugging)
 # 4. After probation (5 uses without override) → fully trusted
 # 5. User confirmation immediately promotes to "active" + trusted
 # 6. Manual rules start active but can still be demoted if repeatedly wrong
 #
-# PRECEDENCE (after all scoring):
-# 1. Highest priority wins (calculated from multiple factors)
-# 2. Manual rules start higher but can lose priority if overridden
-# 3. Specific patterns beat broad patterns
+# PERFORMANCE:
+# - pattern_hash for indexed lookups
+# - compiled_regex cached for regex rules
+# - Rules grouped by scope + account_id
+#
+# CAPACITY:
+# - Auto-prune lowest utility rules when limits exceeded
+# - Quarantine failed rules (don't delete) for debugging
 #
 class CategoryRule < ApplicationRecord
   belongs_to :family
   belongs_to :category
   belongs_to :account, optional: true  # For account-specific rules
 
-  # Match types ordered by specificity (higher = more specific)
+  # Match types ordered by specificity
   MATCH_TYPES = {
     "exact" => 100,
-    "regex_anchored" => 90,   # Regex with \b or ^ or $
+    "regex_anchored" => 90,
     "starts_with" => 80,
     "ends_with" => 70,
     "contains" => 50,
-    "regex" => 45             # Unanchored regex
+    "regex" => 45
   }.freeze
   
-  # Sources ordered by base trust level
   SOURCE_BASE_WEIGHTS = {
     "manual" => 100,
     "system" => 80,
@@ -38,25 +41,26 @@ class CategoryRule < ApplicationRecord
     "auto" => 30
   }.freeze
   
-  # Rule statuses
-  STATUSES = %w[candidate active inactive].freeze
-  
-  # Rule scopes - what the rule applies to
+  STATUSES = %w[candidate active inactive quarantined].freeze
   SCOPES = %w[global narration merchant account_specific].freeze
   
-  # Promotion and probation thresholds
-  PROMOTION_THRESHOLD = 2           # Matches to promote candidate → active
-  PROBATION_USES = 5                # Uses before rule is "trusted"
-  PROBATION_OVERRIDE_TOLERANCE = 0  # Overrides allowed during probation (0 = strict)
+  # Limits
+  MAX_ACCOUNT_SPECIFIC_RULES = 2000
+  MAX_GLOBAL_RULES = 5000
+  MAX_TOTAL_RULES_PER_FAMILY = 10000
   
-  # Confidence settings
+  # Thresholds
+  PROMOTION_THRESHOLD = 2
+  PROBATION_USES = 5
+  PROBATION_OVERRIDE_TOLERANCE = 0
+  
+  # Confidence
   INITIAL_AI_CONFIDENCE = 0.65
   CONFIRMED_CONFIDENCE = 0.95
   MANUAL_CONFIDENCE = 1.0
-  MIN_CONFIDENCE = 0.3              # Below this, demote to inactive
+  MIN_CONFIDENCE = 0.3
   
-  # Override penalty
-  OVERRIDE_PENALTY_PRIORITY = 5000  # Per override, reduce priority by this
+  OVERRIDE_PENALTY_PRIORITY = 5000
 
   validates :pattern, presence: true
   validates :match_type, inclusion: { in: MATCH_TYPES.keys }
@@ -68,88 +72,112 @@ class CategoryRule < ApplicationRecord
 
   scope :active, -> { where(status: "active") }
   scope :candidates, -> { where(status: "candidate") }
+  scope :quarantined, -> { where(status: "quarantined") }
+  scope :matchable, -> { where(status: ["active", "candidate"]) }
   scope :trusted, -> { where(probationary: false, status: "active") }
   scope :by_priority, -> { order(priority: :desc, confidence: :desc) }
   scope :for_scope, ->(scope_type) { where(scope: [scope_type, "global"]) }
+  scope :by_utility, -> { order(Arel.sql("(times_matched - (COALESCE(times_overridden, 0) * 3) - EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400 / 30) DESC")) }
 
   before_validation :calculate_priority
   before_validation :set_defaults, on: :create
   before_validation :detect_regex_type
+  before_validation :compute_pattern_hash
+  before_save :clear_compiled_regex_cache
+
+  # ==========================================
+  # PATTERN HASH & INDEXING
+  # ==========================================
+  
+  def compute_pattern_hash
+    self.pattern_hash = Digest::MD5.hexdigest(pattern.to_s.downcase.strip)
+  end
+
+  # ==========================================
+  # COMPILED REGEX CACHE
+  # ==========================================
+  
+  def compiled_regex
+    return nil unless match_type&.start_with?("regex")
+    
+    @compiled_regex ||= begin
+      Regexp.new(pattern, Regexp::IGNORECASE)
+    rescue RegexpError
+      nil
+    end
+  end
+  
+  def clear_compiled_regex_cache
+    @compiled_regex = nil
+  end
 
   # ==========================================
   # NORMALIZATION (Two-level)
   # ==========================================
   
-  # Light normalization - preserves useful signals, used for MATCHING
   def self.normalize_light(description)
     return "" if description.blank?
-    
     desc = description.dup
-    
-    # Only remove very obvious noise
-    desc = desc.gsub(/\b\d{14,}\b/, "")              # Very long numbers (14+ digits)
-    desc = desc.gsub(/\d{2}[-\/]\d{2}[-\/]\d{4}/, "") # Dates
-    desc = desc.gsub(/\s+/, " ")                      # Collapse whitespace
-    
+    desc = desc.gsub(/\b\d{14,}\b/, "")
+    desc = desc.gsub(/\d{2}[-\/]\d{2}[-\/]\d{4}/, "")
+    desc = desc.gsub(/\s+/, " ")
     desc.strip.downcase
   end
   
-  # Aggressive normalization - for rule pattern EXTRACTION only
   def self.normalize_aggressive(description)
     return "" if description.blank?
-    
     desc = description.dup
-    
-    # Remove noise patterns
-    desc = desc.gsub(/\b[A-Z0-9]{12,}\b/, "")         # Long alphanumeric codes
-    desc = desc.gsub(/\b\d{10,}\b/, "")               # Long numbers
-    desc = desc.gsub(/\d{2}[-\/]\d{2}[-\/]\d{2,4}/, "") # Dates
-    desc = desc.gsub(/ref\s*:?\s*\S+/i, "")           # Reference patterns
-    desc = desc.gsub(/upi\s*ref\s*no\s*\S+/i, "")     # UPI refs  
-    desc = desc.gsub(/txn\s*id\s*:?\s*\S+/i, "")      # Transaction IDs
-    desc = desc.gsub(/[^\w\s]/, " ")                  # Punctuation → spaces
-    desc = desc.gsub(/\s+/, " ")                      # Collapse whitespace
-    
+    desc = desc.gsub(/\b[A-Z0-9]{12,}\b/, "")
+    desc = desc.gsub(/\b\d{10,}\b/, "")
+    desc = desc.gsub(/\d{2}[-\/]\d{2}[-\/]\d{2,4}/, "")
+    desc = desc.gsub(/ref\s*:?\s*\S+/i, "")
+    desc = desc.gsub(/upi\s*ref\s*no\s*\S+/i, "")
+    desc = desc.gsub(/txn\s*id\s*:?\s*\S+/i, "")
+    desc = desc.gsub(/[^\w\s]/, " ")
+    desc = desc.gsub(/\s+/, " ")
     desc.strip.downcase
   end
 
   # ==========================================
-  # MAIN MATCHING LOGIC
+  # MAIN MATCHING LOGIC (Optimized)
   # ==========================================
   
-  # Find the best matching rule for a transaction
   def self.find_matching_rule(description, family:, scope: "narration", account: nil)
     return nil if description.blank?
     
-    # Light normalization for matching
     normalized = normalize_light(description)
     
-    # Build query - active rules for this family and scope
+    # FAST PATH: Try exact hash match first
+    pattern_hash = Digest::MD5.hexdigest(normalized)
+    exact_match = active.where(family: family, pattern_hash: pattern_hash).first
+    return exact_match if exact_match&.matches?(normalized, description)
+    
+    # Build optimized query - pre-filter by scope + account
     query = active.where(family: family).for_scope(scope).by_priority
     
-    # If account specified, also check account-specific rules
     if account
       query = query.where("account_id IS NULL OR account_id = ?", account.id)
     else
       query = query.where(account_id: nil)
     end
     
-    # Find first matching rule (already sorted by priority)
-    query.find { |rule| rule.matches?(normalized, description) }
+    # Group by match_type for ordered checking (exact → starts_with → etc.)
+    # Check in batches to avoid loading all into memory
+    query.find_each(batch_size: 100) do |rule|
+      return rule if rule.matches?(normalized, description)
+    end
+    
+    nil
   end
   
-  # Find category for a description using rules
   def self.categorize_by_rules(description, family:, scope: "narration", account: nil)
     rule = find_matching_rule(description, family: family, scope: scope, account: account)
     return nil unless rule
     
-    # Track the match and potentially promote
     rule.record_match!
-    
     rule.category
   end
   
-  # Check if this rule matches a description
   def matches?(normalized_description, raw_description = nil)
     return false if normalized_description.blank?
     
@@ -164,9 +192,10 @@ class CategoryRule < ApplicationRecord
     when "ends_with"
       normalized_description.end_with?(pattern_lower) || raw_lower.end_with?(pattern_lower)
     when "regex_anchored", "regex"
-      safe_regex_match?(normalized_description, pattern) || safe_regex_match?(raw_lower, pattern)
-    else # contains (default)
-      # For generic patterns, use word boundary matching
+      regex = compiled_regex
+      return false unless regex
+      normalized_description.match?(regex) || raw_lower.match?(regex)
+    else # contains
       if generic_pattern?
         word_boundary_match?(normalized_description, pattern_lower) || 
           word_boundary_match?(raw_lower, pattern_lower)
@@ -176,7 +205,6 @@ class CategoryRule < ApplicationRecord
     end
   end
   
-  # Dangerous/generic patterns that need word-boundary matching
   GENERIC_PATTERNS = %w[
     hdfc icici axis sbi kotak yes indusind rbl ubi bandhan
     paytm phonepe gpay google amazon flipkart
@@ -190,16 +218,69 @@ class CategoryRule < ApplicationRecord
   end
   
   def word_boundary_match?(description, pattern)
-    regex = Regexp.new("\\b#{Regexp.escape(pattern)}\\b", Regexp::IGNORECASE)
-    description.match?(regex)
+    @word_boundary_regex ||= {}
+    @word_boundary_regex[pattern] ||= Regexp.new("\\b#{Regexp.escape(pattern)}\\b", Regexp::IGNORECASE)
+    description.match?(@word_boundary_regex[pattern])
   rescue RegexpError
     description.include?(pattern)
   end
+
+  # ==========================================
+  # CAPACITY MANAGEMENT & AUTO-PRUNE
+  # ==========================================
   
-  def safe_regex_match?(description, pattern)
-    description.match?(Regexp.new(pattern, Regexp::IGNORECASE))
-  rescue RegexpError
-    false
+  def self.enforce_limits!(family)
+    # Check global rules
+    global_count = where(family: family, scope: "global", status: "active").count
+    if global_count > MAX_GLOBAL_RULES
+      prune_lowest_utility!(family, scope: "global", target: MAX_GLOBAL_RULES)
+    end
+    
+    # Check account-specific rules per account
+    family.accounts.each do |account|
+      account_count = where(family: family, account: account, status: "active").count
+      if account_count > MAX_ACCOUNT_SPECIFIC_RULES
+        prune_lowest_utility!(family, account: account, target: MAX_ACCOUNT_SPECIFIC_RULES)
+      end
+    end
+    
+    # Check total rules
+    total_count = where(family: family).where.not(status: "quarantined").count
+    if total_count > MAX_TOTAL_RULES_PER_FAMILY
+      prune_lowest_utility!(family, target: MAX_TOTAL_RULES_PER_FAMILY)
+    end
+  end
+  
+  def self.prune_lowest_utility!(family, scope: nil, account: nil, target:)
+    query = where(family: family, status: "active")
+    query = query.where(scope: scope) if scope
+    query = query.where(account: account) if account
+    
+    current_count = query.count
+    return if current_count <= target
+    
+    to_prune = current_count - target
+    
+    # Get lowest utility rules (but never prune user_confirmed or manual)
+    lowest = query
+      .where(user_confirmed: false)
+      .where.not(source: "manual")
+      .by_utility
+      .last(to_prune)
+    
+    lowest.each do |rule|
+      rule.quarantine!(reason: "auto_pruned_capacity")
+    end
+    
+    Rails.logger.info("CategoryRule auto-pruned #{lowest.size} rules for family #{family.id}")
+  end
+  
+  # Utility score for pruning decisions
+  def utility_score
+    age_days = (Time.current - created_at) / 1.day
+    age_decay = age_days / 30.0  # Decay per month
+    
+    times_matched - ((times_overridden || 0) * 3) - age_decay
   end
 
   # ==========================================
@@ -209,30 +290,22 @@ class CategoryRule < ApplicationRecord
   def record_match!
     increment!(:times_matched)
     
-    # Increase confidence (diminishing returns curve)
     new_confidence = calculate_new_confidence_after_match
     update_column(:confidence, new_confidence)
     
-    # Auto-promote candidates after threshold
     if status == "candidate" && times_matched >= PROMOTION_THRESHOLD
       promote_to_active!
     end
     
-    # Exit probation if enough uses without recent overrides
-    if probationary? && times_matched >= PROBATION_USES
-      if recent_overrides_count == 0
-        exit_probation!
-      end
+    if probationary? && times_matched >= PROBATION_USES && recent_overrides_count == 0
+      exit_probation!
     end
     
     recalculate_priority!
   end
   
-  # Diminishing returns: +0.05 for first 3, +0.02 for next 5, +0.01 after
   def calculate_new_confidence_after_match
-    current = confidence
     matches = times_matched
-    
     increment = if matches <= 3
       0.05
     elsif matches <= 8
@@ -241,17 +314,14 @@ class CategoryRule < ApplicationRecord
       0.01
     end
     
-    # Don't increase if recently overridden (cooldown)
     if last_overridden_at && last_overridden_at > 24.hours.ago
       increment = 0
     end
     
-    [current + increment, 0.99].min
+    [confidence + increment, 0.99].min
   end
   
   def recent_overrides_count
-    # Count overrides in last N matches
-    # For simplicity, we track times_overridden total
     times_overridden || 0
   end
   
@@ -265,37 +335,41 @@ class CategoryRule < ApplicationRecord
     Rails.logger.info("CategoryRule exited probation: pattern='#{pattern}'")
   end
   
-  def demote_to_inactive!
-    update!(status: "inactive")
-    Rails.logger.warn("CategoryRule demoted to inactive: pattern='#{pattern}'")
+  # ==========================================
+  # QUARANTINE (instead of delete)
+  # ==========================================
+  
+  def quarantine!(reason:)
+    update!(
+      status: "quarantined",
+      quarantine_reason: reason,
+      quarantined_at: Time.current
+    )
+    Rails.logger.warn("CategoryRule quarantined: pattern='#{pattern}' reason='#{reason}'")
   end
   
-  # Called when user overrides this rule's categorization
   def record_override!
     increment!(:times_overridden)
     update_column(:last_overridden_at, Time.current)
     
-    # Decrease confidence (more aggressive for AI rules)
     decrement = source == "ai" ? 0.20 : 0.15
     new_confidence = [confidence - decrement, 0].max
     update_column(:confidence, new_confidence)
     
-    # PROBATIONARY RULES: Demote immediately on first override
+    # Immediate quarantine during probation
     if probationary? && times_overridden > PROBATION_OVERRIDE_TOLERANCE
-      demote_to_inactive!
-      Rails.logger.warn("CategoryRule demoted during probation: pattern='#{pattern}'")
+      quarantine!(reason: "failed_probation")
       return
     end
     
-    # Any rule: Demote if confidence too low
+    # Quarantine if confidence too low
     if new_confidence < MIN_CONFIDENCE
-      demote_to_inactive!
+      quarantine!(reason: "low_confidence")
     end
     
     recalculate_priority!
   end
   
-  # User confirms this rule is correct
   def confirm!
     update!(
       confidence: [confidence, CONFIRMED_CONFIDENCE].max,
@@ -312,34 +386,22 @@ class CategoryRule < ApplicationRecord
   # ==========================================
   
   def calculate_priority
-    # Base from source (can be reduced by overrides)
     base_source_weight = SOURCE_BASE_WEIGHTS[source] || 30
     
-    # Override penalty - even manual rules lose priority if repeatedly wrong
     override_penalty = (times_overridden || 0) * OVERRIDE_PENALTY_PRIORITY
     effective_source_weight = [base_source_weight * 1000 - override_penalty, 0].max
     
-    # Match strength
     match_strength = MATCH_TYPES[match_type] || 50
-    
-    # Pattern specificity (longer = more specific, capped)
     pattern_specificity = [pattern.to_s.length, 50].min
-    
-    # Confidence bonus (0-10)
     confidence_bonus = (confidence * 10).round
-    
-    # User confirmed bonus
     user_confirmed_bonus = user_confirmed? ? 200 : 0
-    
-    # Probationary penalty (active but not yet trusted)
     probation_penalty = probationary? ? 100 : 0
     
-    # Scope bonus (more specific scope = higher priority)
     scope_bonus = case self.scope
     when "account_specific" then 300
     when "merchant" then 200
     when "narration" then 100
-    else 0  # global
+    else 0
     end
     
     self.priority = effective_source_weight + 
@@ -360,29 +422,24 @@ class CategoryRule < ApplicationRecord
   # RULE CREATION
   # ==========================================
 
-  # Create a rule from an AI categorization (starts as candidate + probationary)
   def self.create_from_ai_categorization(description:, category:, family:, 
                                           confidence: nil, scope: "narration", account: nil)
-    # Use aggressive normalization for pattern extraction
     pattern = extract_pattern(description)
-    return nil if pattern.blank?
-    return nil if pattern.length < 3  # Too short = too generic
+    return nil if pattern.blank? || pattern.length < 3
     
-    # Check for existing rule with same pattern
     existing = find_by(family: family, pattern: pattern.downcase, scope: scope)
     if existing
       existing.record_match!
       return existing
     end
     
-    # Don't create if there's a conflicting manual/system rule
     conflicting = where(family: family, scope: scope)
                     .where("LOWER(pattern) = ?", pattern.downcase)
                     .where(source: ["manual", "system"])
                     .exists?
     return nil if conflicting
     
-    create(
+    rule = create(
       family: family,
       category: category,
       account: account,
@@ -396,9 +453,13 @@ class CategoryRule < ApplicationRecord
       merchant_name: extract_merchant_name(description),
       user_confirmed: false
     )
+    
+    # Enforce limits after creation
+    enforce_limits!(family) if rule.persisted?
+    
+    rule
   end
 
-  # Learn a rule from user's manual categorization
   def self.learn_from_user(transaction:, category:, scope: "narration")
     description = transaction.entry.name
     return nil if description.blank?
@@ -409,13 +470,9 @@ class CategoryRule < ApplicationRecord
     existing = find_by(family: transaction.family, pattern: pattern.downcase, scope: scope)
     if existing
       if existing.category_id == category.id
-        # User confirming existing rule
         existing.confirm!
       else
-        # User correcting to different category - override old rule
         existing.record_override!
-        
-        # Create new manual rule
         return create(
           family: transaction.family,
           category: category,
@@ -424,7 +481,7 @@ class CategoryRule < ApplicationRecord
           source: "manual",
           scope: scope,
           status: "active",
-          probationary: false,  # Manual rules skip probation
+          probationary: false,
           confidence: MANUAL_CONFIDENCE,
           merchant_name: extract_merchant_name(description),
           user_confirmed: true
@@ -449,7 +506,7 @@ class CategoryRule < ApplicationRecord
   end
 
   # ==========================================
-  # EXPLANATION (for "Why was this categorized?")
+  # EXPLANATION
   # ==========================================
   
   def explanation
@@ -464,6 +521,7 @@ class CategoryRule < ApplicationRecord
       source_label: source_label,
       confidence: confidence.round(2),
       trusted: !probationary?,
+      utility: utility_score.round(2),
       stats: {
         times_matched: times_matched,
         times_overridden: times_overridden || 0,
@@ -481,7 +539,6 @@ class CategoryRule < ApplicationRecord
     when "ai" then user_confirmed? ? "AI (you confirmed)" : "AI learned"
     else "Auto-detected"
     end
-    
     base += " (probationary)" if probationary?
     base
   end
@@ -495,15 +552,9 @@ class CategoryRule < ApplicationRecord
     when "regex", "regex_anchored" then "matches pattern"
     end
     
-    confidence_desc = if confidence >= 0.9
-      "high confidence"
-    elsif confidence >= 0.7
-      "good confidence"
-    elsif confidence >= 0.5
-      "moderate confidence"
-    else
-      "low confidence"
-    end
+    confidence_desc = confidence >= 0.9 ? "high confidence" :
+                      confidence >= 0.7 ? "good confidence" :
+                      confidence >= 0.5 ? "moderate confidence" : "low confidence"
     
     trust_desc = probationary? ? ", probationary" : ""
     
@@ -518,70 +569,38 @@ class CategoryRule < ApplicationRecord
     probationary == true
   end
   
-  # Detect if regex has anchors (more specific)
   def detect_regex_type
     return unless match_type&.start_with?("regex")
-    
-    if pattern.match?(/\\b|^\^|\$$/)
-      self.match_type = "regex_anchored"
-    else
-      self.match_type = "regex"
-    end
+    self.match_type = pattern.match?(/\\b|^\^|\$$/) ? "regex_anchored" : "regex"
   end
   
   def self.determine_match_type(pattern)
     return "contains" if pattern.blank?
-    
-    # Very short patterns should be exact
     return "exact" if pattern.length <= 4
-    
-    # Patterns that look like clean merchant names → starts_with
-    if pattern.match?(/^[a-z]+$/i) && pattern.length >= 5
-      return "starts_with"
-    end
-    
+    return "starts_with" if pattern.match?(/^[a-z]+$/i) && pattern.length >= 5
     "contains"
   end
 
-  # Extract pattern using AGGRESSIVE normalization
   def self.extract_pattern(description)
     return nil if description.blank?
-    
     normalized = normalize_aggressive(description)
     return nil if normalized.blank?
     
-    # Split into tokens and find meaningful ones
     tokens = normalized.split(/\s+/).reject { |t| t.length < 3 }
-    
-    # Remove noise words
     noise_words = %w[
       upi imps neft rtgs the and for from to via by at on in of
       debit credit transfer payment transaction ref no number id
-      mobile wallet bank account pvt ltd limited india private
-      pos ach wire check cheque
+      mobile wallet bank account pvt ltd limited india private pos ach wire check cheque
     ]
-    meaningful_tokens = tokens.reject { |t| noise_words.include?(t) }
-    
-    # Take first 2-3 meaningful tokens
-    pattern = meaningful_tokens.first(3).join(" ")
-    
-    # Fallback if too generic
-    if pattern.length < 4 && normalized.length >= 4
-      pattern = normalized.split(/\s+/).first(3).join(" ")
-    end
-    
+    meaningful = tokens.reject { |t| noise_words.include?(t) }
+    pattern = meaningful.first(3).join(" ")
+    pattern = normalized.split(/\s+/).first(3).join(" ") if pattern.length < 4 && normalized.length >= 4
     pattern.presence
   end
 
   def self.extract_merchant_name(description)
     return nil if description.blank?
-    
-    # Light normalization to preserve useful signals
-    normalized = normalize_light(description)
-    tokens = normalized.split(/\s+/).reject { |t| t.length < 3 }
-    
-    # First meaningful token is often the merchant
-    tokens.first&.titleize
+    normalize_light(description).split(/\s+/).reject { |t| t.length < 3 }.first&.titleize
   end
 
   private

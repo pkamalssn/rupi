@@ -7,12 +7,13 @@ class CreateCategoryRules < ActiveRecord::Migration[7.2]
       
       # Core matching
       t.string :pattern, null: false
+      t.string :pattern_hash                                  # MD5 hash for fast exact lookup
       t.string :match_type, default: "contains", null: false  # exact, starts_with, ends_with, contains, regex, regex_anchored
       t.string :scope, default: "narration", null: false      # global, narration, merchant, account_specific
       
       # Source and trust
       t.string :source, default: "auto", null: false          # manual, system, ai, auto
-      t.string :status, default: "candidate", null: false     # candidate, active, inactive
+      t.string :status, default: "candidate", null: false     # candidate, active, inactive, quarantined
       t.boolean :probationary, default: true, null: false     # Still in probation period?
       
       # Confidence and scoring
@@ -25,6 +26,10 @@ class CreateCategoryRules < ActiveRecord::Migration[7.2]
       t.integer :times_overridden, default: 0, null: false
       t.datetime :last_overridden_at                          # For cooldown logic
       
+      # Quarantine (for debugging failed rules)
+      t.string :quarantine_reason
+      t.datetime :quarantined_at
+      
       # Metadata
       t.string :merchant_name
 
@@ -34,6 +39,9 @@ class CreateCategoryRules < ActiveRecord::Migration[7.2]
     # Unique pattern per family + scope
     add_index :category_rules, [:family_id, :pattern, :scope], unique: true
     
+    # Fast hash-based exact lookup
+    add_index :category_rules, [:family_id, :pattern_hash]
+    
     # Fast lookups for active rules by priority
     add_index :category_rules, [:family_id, :status, :priority], order: { priority: :desc }
     
@@ -42,5 +50,8 @@ class CreateCategoryRules < ActiveRecord::Migration[7.2]
     
     # Account-specific rule lookup
     add_index :category_rules, [:family_id, :account_id]
+    
+    # Scope-based queries
+    add_index :category_rules, [:family_id, :scope, :status]
   end
 end
