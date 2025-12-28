@@ -152,6 +152,9 @@ class Provider::Gemini < Provider
       conn.request :json
       conn.response :json
       conn.response :raise_error
+      # Extended timeout for document parsing (large PDFs can take time)
+      conn.options.timeout = 180        # 3 minutes total
+      conn.options.open_timeout = 30    # 30 seconds to connect
       conn.use Faraday::Retry::Middleware,
         max: 3,
         interval: 1,
