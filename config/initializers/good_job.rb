@@ -2,9 +2,9 @@
 
 Rails.application.configure do
   config.good_job = {
-    # Enable async execution mode - runs jobs inside the Puma web server process
+    # Use async_server mode - runs jobs inside the Puma web server process
     # This is perfect for Render.com's free tier (no separate worker needed)
-    execution_mode: :async,
+    execution_mode: :async_server,
 
     # Enable cron for scheduled jobs (replaces sidekiq-cron)
     enable_cron: true,

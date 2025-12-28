@@ -1,7 +1,8 @@
 default: &default
   adapter: postgresql
   encoding: unicode
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 3 } %>
+  # Pool size: Puma threads (3) + GoodJob threads (3) + buffer (4) = 10
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 3 }.to_i + ENV.fetch("GOOD_JOB_MAX_THREADS") { 3 }.to_i + 4 %>
   host: <%= ENV.fetch("DB_HOST") { "127.0.0.1" } %>
   port: <%= ENV.fetch("DB_PORT") { "5432" } %>
   user: <%= ENV.fetch("POSTGRES_USER") { nil } %>

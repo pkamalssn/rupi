@@ -3,117 +3,138 @@
 module BankStatementParser
   class IciciAmazonPay < Base
     # ICICI Amazon Pay Credit Card statement parser
+    # Also works for other ICICI Credit Cards
     
     def parse
       if pdf_file?
-        text = if scanned_pdf?
-          extract_text_with_ocr
-        elsif password_protected? && password.present?
-          decrypt_pdf_and_extract_text
-        else
-          extract_text_from_pdf
-        end
+        text = extract_icici_cc_text
         parse_transactions_from_text(text)
       else
-        raise UnsupportedFormatError, "ICICI Amazon Pay statements are typically PDF format"
+        raise UnsupportedFormatError, "ICICI Credit Card statements are typically PDF format"
       end
     rescue PasswordRequiredError
       raise
     rescue => e
-      raise ParseError, "Failed to parse ICICI Amazon Pay statement: #{e.message}"
+      raise ParseError, "Failed to parse ICICI Credit Card statement: #{e.message}"
     end
 
     private
+    
+    def extract_icici_cc_text
+      require "pdf-reader"
+      
+      # ICICI CC PDFs often have encryption issues
+      # Try multiple approaches
+      
+      begin
+        # First try direct read
+        reader = PDF::Reader.new(file_path)
+        return reader.pages.map(&:text).join("\n")
+      rescue PDF::Reader::EncryptedPDFError
+        # Try qpdf decryption as fallback
+        if password.present?
+          return decrypt_with_qpdf
+        else
+          raise PasswordRequiredError, "Password required for ICICI Credit Card statement"
+        end
+      end
+    end
+    
+    def decrypt_with_qpdf
+      require "tempfile"
+      temp = Tempfile.new(["icici_cc", ".pdf"])
+      
+      # Use qpdf which handles problematic ICICI CC encryption
+      system("qpdf", "--password=#{password}", "--decrypt", file_path, temp.path, 
+             out: File::NULL, err: File::NULL)
+      
+      unless File.exist?(temp.path) && File.size(temp.path) > 0
+        raise ParseError, "Failed to decrypt ICICI Credit Card PDF"
+      end
+      
+      reader = PDF::Reader.new(temp.path)
+      text = reader.pages.map(&:text).join("\n")
+      temp.unlink
+      text
+    end
 
     def parse_transactions_from_text(text)
       transactions = []
       lines = text.split("\n")
       
-      in_transactions_section = false
-      current_date = nil
+      # Extract metadata
+      if match = text.match(/Total Amount due.*?([\d,]+\.\d{2})/im)
+        @metadata[:total_due] = parse_amount(match[1])
+      end
+      if match = text.match(/Credit Limit.*?([\d,]+\.\d{2})/im)
+        @metadata[:credit_limit] = parse_amount(match[1])
+      end
       
       lines.each do |line|
-        # Detect start of transactions section
-        if line.match?(/transaction.*details|statement.*transactions/i)
-          in_transactions_section = true
-          next
+        line = line.strip
+        next if line.empty?
+        next if line.length < 15
+        
+        # Skip header/footer lines
+        next if line.match?(/^(Date|Transaction|Description|Points|Amount|Page\s+\d)/i)
+        next if line.match?(/statement.*date|payment.*due.*date|credit.*limit/i)
+        
+        # ICICI CC Format: DD/MM/YYYY | Trans ID | Description | Points | Amount (CR)
+        # Date pattern at the start of line (may have leading spaces/numbers)
+        next unless date_match = line.match(/^\s*\d*\s*(\d{2}[\/-]\d{2}[\/-]\d{4})/)
+        
+        date = parse_date(date_match[1])
+        next unless date
+        
+        # Extract amount - look for number followed by optional CR
+        # Pattern: "45,317.00 CR" or "1,403.00" or "23.6 USD 2,189.78"
+        # Get the last amount in the line (usually the INR amount)
+        amounts = line.scan(/([\d,]+\.\d{2})(\s*CR)?/i)
+        next if amounts.empty?
+        
+        # Last amount is typically the transaction amount
+        amount_str, cr_indicator = amounts.last
+        amount = parse_amount(amount_str)
+        next unless amount && amount > 0
+        
+        # Determine credit vs debit
+        # CR suffix = Credit (payment, refund, reversal)
+        # No suffix = Debit (purchase)
+        is_credit = cr_indicator&.strip&.upcase == "CR" ||
+                    line.downcase.match?(/payment.*received|refund|reversal|cashback/)
+        
+        # For credit card: purchases are negative (money spent)
+        # Credits/payments are positive
+        if is_credit
+          amount = amount.abs
+        else
+          amount = -amount.abs
         end
         
-        next unless in_transactions_section
-        next if line.strip.empty?
+        # Extract description
+        description = line.sub(date_match[0], "").strip
+        # Remove transaction ID (12-digit number)
+        description = description.gsub(/\d{10,12}/, "")
+        # Remove amounts
+        description = description.gsub(/[\d,]+\.\d{2}(\s*CR)?/i, "")
+        # Remove reward points (single/double digit followed by spaces)
+        description = description.gsub(/^\s*\d{1,2}\s+/, " ")
+        # Remove foreign currency amounts
+        description = description.gsub(/[\d.]+\s*(USD|EUR|GBP)/i, "")
+        description = clean_description(description)
         
-        # Skip summary/total lines
-        next if line.match?(/^(total|sub.*total|minimum|payment.*due|credit.*limit)/i)
+        # Skip interest/fee only entries with no meaningful description
+        next if description.blank? && amount.abs < 1
         
-        # Look for date
-        if match = line.match(/(\d{1,2}[\/\-][A-Za-z]{3}[\/\-]\d{2,4})|(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/)
-          parsed_date = parse_date(match[0])
-          current_date = parsed_date if parsed_date
-        end
-        
-        next unless current_date
-
-        # Extract amount
-        if amount_match = line.match(/([\d,]+\.\d{2})\s*(Cr|Dr)?/i)
-          amount = BigDecimal(amount_match[1].gsub(",", ""))
-          
-          # Check if credit (payment, cashback) or debit (purchase)
-          is_credit = amount_match[2]&.downcase == "cr" ||
-                      line.downcase.match?(/credit|refund|cashback|reward|payment.*thank/)
-          
-          amount = -amount unless is_credit
-
-          description = extract_description(line, amount_match[0])
-          
-          # Special handling for Amazon transactions
-          if description.downcase.include?("amazon")
-            description = categorize_amazon_transaction(description)
-          end
-
-          transactions << {
-            date: current_date,
-            amount: amount,
-            description: description.presence || "ICICI Amazon Pay Transaction",
-            notes: "Imported from ICICI Amazon Pay statement",
-            rewards: extract_rewards(line)
-          }
-        end
+        transactions << {
+          date: date,
+          amount: amount,
+          description: description.presence || "ICICI CC Transaction",
+          notes: "Imported from ICICI Credit Card statement"
+        }
       end
 
       transactions.uniq { |t| [t[:date], t[:amount].to_s, t[:description]] }
-    end
-
-    def extract_description(line, amount_match)
-      desc = line.dup
-      # Remove date patterns
-      desc = desc.gsub(/\d{1,2}[\/\-][A-Za-z]{3}[\/\-]\d{2,4}/, "")
-      desc = desc.gsub(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/, "")
-      desc = desc.sub(amount_match, "")
-      desc = desc.gsub(/\s*(Cr|Dr)\s*/i, "")
-      clean_description(desc)
-    end
-
-    def categorize_amazon_transaction(description)
-      case description.downcase
-      when /prime/
-        "Amazon Prime Subscription"
-      when /fresh/
-        "Amazon Fresh"
-      when /pantry/
-        "Amazon Pantry"
-      when /kindle/
-        "Amazon Kindle"
-      when /aws|web.*services/
-        "Amazon Web Services"
-      else
-        "Amazon Purchase"
-      end
-    end
-
-    def extract_rewards(line)
-      if match = line.match(/(\d+)\s*(reward|point|cashback)/i)
-        match[1].to_i
-      end
     end
   end
 end

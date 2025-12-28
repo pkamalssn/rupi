@@ -2,7 +2,7 @@
 
 module BankStatementParser
   class KotakRoyale < Base
-    # Kotak Royale Credit Card statement parser
+    # Kotak Credit Card statement parser (Royale, 811, etc.)
     
     def parse
       if pdf_file?
@@ -22,7 +22,7 @@ module BankStatementParser
     rescue PasswordRequiredError
       raise
     rescue => e
-      raise ParseError, "Failed to parse Kotak Royale statement: #{e.message}"
+      raise ParseError, "Failed to parse Kotak Credit Card statement: #{e.message}"
     end
 
     private
@@ -43,50 +43,87 @@ module BankStatementParser
       transactions = []
       lines = text.split("\n")
       
-      current_date = nil
+      in_transactions = false
+      
+      # Extract metadata
+      if match = text.match(/Total Amount Due.*?([\d,]+\.\d{2})/im)
+        @metadata[:total_due] = parse_amount(match[1])
+      end
+      if match = text.match(/Minimum Amount Due.*?([\d,]+\.\d{2})/im)
+        @metadata[:minimum_due] = parse_amount(match[1])
+      end
       
       lines.each do |line|
-        next if line.strip.empty?
-        next if line.match?(/^(statement|page|total|minimum|limit|available)/i)
+        line = line.strip
+        next if line.empty?
         
-        # Look for date patterns
-        if match = line.match(/(\d{1,2}[\/\-][A-Za-z]{3}[\/\-]\d{2,4})|(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/)
-          parsed_date = parse_date(match[0])
-          current_date = parsed_date if parsed_date
+        # Detect start of transaction section
+        if line.match?(/Transaction details from/i)
+          in_transactions = true
+          next
         end
         
-        next unless current_date
-
-        # Extract amount
-        if amount_match = line.match(/([\d,]+\.\d{2})\s*(Cr|Dr)?/i)
-          amount = BigDecimal(amount_match[1].gsub(",", ""))
-          
-          is_credit = amount_match[2]&.downcase == "cr" ||
-                      line.downcase.match?(/credit|refund|cashback|reversal/)
-          
-          amount = -amount unless is_credit
-
-          description = extract_description(line, amount_match[0])
-
-          transactions << {
-            date: current_date,
-            amount: amount,
-            description: description.presence || "Kotak Royale Transaction",
-            notes: "Imported from Kotak Royale Credit Card statement"
-          }
+        # Skip non-transaction lines
+        next unless in_transactions
+        
+        # Skip section headers and summary lines
+        next if line.match?(/^(Date|Statement|Page|Total|Minimum|Limit|Available|Customer|Primary|GSTIN|Rs\.\s*-)/i)
+        next if line.match?(/^(EMI and Loans|Other Fees|Purchase \& Other)/i)
+        next if line.match?(/SMS EMI|Payment of only|month shall/i)
+        next if line.match?(/Credit Limit|Cash Limit|Outstanding|Payable/i)
+        next if line.match?(/^[A-Z]{4}\s+XXXX|Card Number/i)
+        
+        # Line must start with date: DD/MM/YYYY
+        next unless date_match = line.match(/^(\d{2}\/\d{2}\/\d{4})\s+/)
+        
+        date = parse_date(date_match[1])
+        next unless date
+        
+        # Skip if date is unrealistic (future year > 2026)
+        next if date.year > 2026
+        
+        # Extract amount at the end - pattern: number with optional Cr
+        amounts = line.scan(/([\d,]+\.\d{2})(\s*Cr)?/i)
+        next if amounts.empty?
+        
+        # Last amount is the transaction amount
+        amount_str, cr_indicator = amounts.last
+        amount = parse_amount(amount_str)
+        next unless amount && amount > 0
+        
+        # Credits have "Cr" suffix (refunds, surcharge waivers)
+        is_credit = cr_indicator&.strip&.downcase == "cr" ||
+                    line.downcase.match?(/waiver|reversal|refund|cashback/)
+        
+        # For credit card: purchases are negative
+        if is_credit
+          amount = amount.abs
+        else
+          amount = -amount.abs
         end
+        
+        # Extract description between date and amount
+        description = line.sub(date_match[0], "").strip
+        # Remove all amounts including Cr
+        description = description.gsub(/[\d,]+\.\d{2}(\s*Cr)?/i, "")
+        # Remove spending category (single word at end before amount like "Fuel", "Food")
+        description = description.gsub(/\s+(Fuel|Food|Shopping|Automotive|Travel|Entertainment|Utilities|Other)\s*$/i, "")
+        # Remove EMI conversion text
+        description = description.gsub(/\*Convert to EMI\*?/i, "")
+        description = clean_description(description)
+        
+        # Skip fee/charges that are just descriptions
+        next if description.match?(/^\s*GST\s*$/i) && amount.abs < 1000
+        
+        transactions << {
+          date: date,
+          amount: amount,
+          description: description.presence || "Kotak CC Transaction",
+          notes: "Imported from Kotak Credit Card statement"
+        }
       end
 
       transactions.uniq { |t| [t[:date], t[:amount].to_s, t[:description]] }
-    end
-
-    def extract_description(line, amount_match)
-      desc = line.dup
-      desc = desc.gsub(/\d{1,2}[\/\-][A-Za-z]{3}[\/\-]\d{2,4}/, "")
-      desc = desc.gsub(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/, "")
-      desc = desc.sub(amount_match, "")
-      desc = desc.gsub(/\s*(Cr|Dr)\s*/i, "")
-      clean_description(desc)
     end
 
     def parse_transactions_from_spreadsheet(spreadsheet)
@@ -120,20 +157,19 @@ module BankStatementParser
 
         description = clean_description(row[column_map[:description] || 1])
         
-        # Check type column or description for credit indicator
         is_credit = false
         if column_map[:type]
           is_credit = row[column_map[:type]].to_s.downcase.include?("cr")
         end
-        is_credit ||= description.downcase.match?(/credit|refund|cashback/)
+        is_credit ||= description.downcase.match?(/credit|refund|cashback|waiver/)
         
         amount = -amount.abs unless is_credit
 
         transactions << {
           date: date,
           amount: amount,
-          description: description.presence || "Kotak Royale Transaction",
-          notes: "Imported from Kotak Royale Credit Card statement"
+          description: description.presence || "Kotak CC Transaction",
+          notes: "Imported from Kotak Credit Card statement"
         }
       end
 
