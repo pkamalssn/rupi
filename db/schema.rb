@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_12_27_173400) do
+ActiveRecord::Schema[7.2].define(version: 2025_12_28_095754) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -183,6 +183,24 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_27_173400) do
     t.string "classification", default: "expense", null: false
     t.string "lucide_icon", default: "shapes", null: false
     t.index ["family_id"], name: "index_categories_on_family_id"
+  end
+
+  create_table "category_rules", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.uuid "category_id", null: false
+    t.string "pattern", null: false
+    t.string "match_type", default: "contains", null: false
+    t.string "source", default: "auto", null: false
+    t.float "confidence", default: 0.9
+    t.integer "times_matched", default: 0
+    t.string "merchant_name"
+    t.boolean "active", default: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category_id"], name: "index_category_rules_on_category_id"
+    t.index ["family_id", "active"], name: "index_category_rules_on_family_id_and_active"
+    t.index ["family_id", "pattern"], name: "index_category_rules_on_family_id_and_pattern", unique: true
+    t.index ["family_id"], name: "index_category_rules_on_family_id"
   end
 
   create_table "chats", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1319,6 +1337,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_12_27_173400) do
   add_foreign_key "budget_categories", "categories"
   add_foreign_key "budgets", "families"
   add_foreign_key "categories", "families"
+  add_foreign_key "category_rules", "categories"
+  add_foreign_key "category_rules", "families"
   add_foreign_key "chats", "users"
   add_foreign_key "emi_payments", "entries"
   add_foreign_key "emi_payments", "loans"

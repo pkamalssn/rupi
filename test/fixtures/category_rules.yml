@@ -1,0 +1,21 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  family: one
+  category: one
+  pattern: MyString
+  match_type: MyString
+  source: MyString
+  confidence: 1.5
+  times_matched: 1
+  merchant_name: MyString
+
+two:
+  family: two
+  category: two
+  pattern: MyString
+  match_type: MyString
+  source: MyString
+  confidence: 1.5
+  times_matched: 1
+  merchant_name: MyString

@@ -475,7 +475,20 @@ class BankStatementImport < Import
   def find_category(description)
     return nil if description.blank?
     
-    # Comprehensive keyword-based categorization for Indian transactions
+    # ==========================================
+    # PRIORITY 1: Check learned rules (highest priority, deterministic)
+    # These are rules learned from AI or user corrections
+    # ==========================================
+    if (rule_category = CategoryRule.categorize_by_rules(description, family: family))
+      Rails.logger.debug { "CategoryRule matched: '#{description}' -> '#{rule_category.name}'" }
+      return rule_category
+    end
+    
+    # ==========================================
+    # PRIORITY 2: Keyword-based categorization (fallback)
+    # Comprehensive Indian-specific keyword matching
+    # ==========================================
+    
     # Ordered by specificity - more specific matches first
     category_keywords = {
       # ==========================================

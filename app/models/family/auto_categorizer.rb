@@ -49,6 +49,22 @@ class Family::AutoCategorizer
         transaction.lock_attr!(:category_id)
         # enrich_attribute returns true if the transaction was actually modified
         modified_count += 1 if was_modified
+        
+        # ==========================================
+        # RULE LEARNING: Create a rule for future transactions
+        # This makes future categorization deterministic (no AI call needed)
+        # ==========================================
+        if was_modified
+          category = Category.find_by(id: category_id)
+          if category
+            CategoryRule.create_from_ai_categorization(
+              description: transaction.entry.name,
+              category: category,
+              family: family,
+              confidence: 0.85  # Slightly lower confidence for AI-generated rules
+            )
+          end
+        end
       end
     end
 
