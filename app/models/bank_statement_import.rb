@@ -221,14 +221,27 @@ class BankStatementImport < Import
     transactions.each_with_index do |txn_data, index|
       next unless txn_data.is_a?(Hash) && txn_data[:date] && txn_data[:amount]
       
+      # =====================================================
+      # POLARITY CONVERSION: Parser → Rupi Convention
+      # =====================================================
+      # Parsers return: Deposits=+positive, Withdrawals=-negative (user-friendly)
+      # Rupi expects:   Inflows=-negative, Outflows=+positive (accounting standard)
+      # 
+      # Rupi convention (from Import::Row#apply_transaction_signage_convention):
+      #   - Negative amount = Inflow (money coming IN, increases balance)
+      #   - Positive amount = Outflow (money going OUT, decreases balance)
+      #
+      # So we invert: rupi_amount = -parser_amount
+      rupi_amount = -txn_data[:amount].to_d
+      
       category = find_category(txn_data[:description])
       effective_currency = mapped_account.currency.presence || family.currency
 
-      # Check for duplicates
+      # Check for duplicates (using Rupi convention amount)
       adapter = Account::ProviderImportAdapter.new(mapped_account)
       duplicate_entry = adapter.find_duplicate_transaction(
         date: txn_data[:date],
-        amount: txn_data[:amount],
+        amount: rupi_amount,
         currency: effective_currency,
         name: txn_data[:description],
         exclude_entry_ids: claimed_entry_ids
@@ -246,7 +259,7 @@ class BankStatementImport < Import
           entry: Entry.new(
             account: mapped_account,
             date: txn_data[:date],
-            amount: txn_data[:amount],
+            amount: rupi_amount,  # Use Rupi convention
             name: txn_data[:description],
             currency: effective_currency,
             notes: txn_data[:notes],
