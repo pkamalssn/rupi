@@ -425,10 +425,90 @@ class BankStatementImport < Import
   end
 
   def parse_statement
+    # =====================================================
+    # SIDECAR ARCHITECTURE: Use RupiEngine API for parsing
+    # =====================================================
+    # The proprietary parsing logic lives in rupi-engine (port 4000)
+    # This keeps the secret sauce separate from the open-source shell
+    
+    # Download the file for API upload
+    file_to_parse = download_statement_file
+    
+    begin
+      # Call the proprietary parsing engine
+      response = RupiEngine::Client.parse_statement(
+        file_to_parse, 
+        bank_name: bank_name, 
+        password: effective_password
+      )
+      
+      if response.success?
+        Rails.logger.info("[RupiEngine] Successfully parsed #{response.transaction_count} transactions for #{bank_name}")
+        
+        # Bundle transactions with metadata from engine
+        {
+          transactions: response.transactions.map { |t| normalize_engine_transaction(t) },
+          metadata: response.data&.dig("metadata") || {}
+        }
+      else
+        # Handle specific error types
+        case response.error_type
+        when "password_required"
+          raise BankStatementParser::PasswordRequiredError, response.error_message
+        when "connection_error", "timeout"
+          # Engine unavailable - fall back to local parsing (temporary)
+          Rails.logger.warn("[RupiEngine] Engine unavailable (#{response.error_type}), falling back to local parser")
+          parse_statement_locally
+        else
+          raise BankStatementParser::ParseError, response.error_message || "Failed to parse statement"
+        end
+      end
+      
+    rescue Errno::ECONNREFUSED, SocketError, Net::OpenTimeout, Net::ReadTimeout => e
+      # Engine not running - fall back to local parsing (for development)
+      Rails.logger.warn("[RupiEngine] Connection failed (#{e.class}), falling back to local parser")
+      parse_statement_locally
+    ensure
+      # Clean up temp file
+      file_to_parse.close if file_to_parse.respond_to?(:close)
+      file_to_parse.unlink if file_to_parse.respond_to?(:unlink) && file_to_parse.is_a?(Tempfile)
+    end
+  end
+  
+  # Normalize transaction hash from engine API to internal format
+  def normalize_engine_transaction(txn)
+    {
+      date: txn["date"] || txn[:date],
+      description: txn["description"] || txn[:description],
+      amount: txn["amount"] || txn[:amount],
+      balance: txn["balance"] || txn[:balance],
+      notes: txn["notes"] || txn[:notes]
+    }.compact
+  end
+  
+  # Download statement file for API upload
+  def download_statement_file
+    if statement_file.respond_to?(:download)
+      # ActiveStorage attachment
+      temp = Tempfile.new(["statement", File.extname(statement_file.filename.to_s)])
+      temp.binmode
+      temp.write(statement_file.download)
+      temp.rewind
+      temp
+    elsif statement_file.respond_to?(:path)
+      File.open(statement_file.path)
+    else
+      statement_file
+    end
+  end
+  
+  # FALLBACK: Local parsing (to be removed once engine is stable)
+  # TODO: Remove this once RupiEngine is deployed and stable
+  def parse_statement_locally
+    Rails.logger.info("[LocalParser] Using local parser for #{bank_name}")
     parser = parser_class.new(statement_file, password: effective_password)
     transactions = parser.parse
     
-    # Bundle metadata if available
     {
       transactions: transactions,
       metadata: parser.respond_to?(:metadata) ? parser.metadata : {}
