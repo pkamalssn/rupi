@@ -80,6 +80,17 @@ module BankStatementParser
       transactions = []
 
       lines = text.split("\n")
+      
+      # Extract metadata - Kotak format: "Opening Balance : 2,261.51(Cr)"
+      lines.each do |line|
+        if match = line.match(/Opening Balance.*?([\d,]+\.\d{2})/i)
+          @metadata[:opening_balance] = parse_amount(match[1])
+        end
+        if match = line.match(/Closing Balance.*?([\d,]+\.\d{2})/i)
+          @metadata[:closing_balance] = parse_amount(match[1])
+        end
+      end
+      
       lines.each do |line|
         # Kotak format patterns:
         # Old: "01 Jan 2024    TRANSACTION    500.00"

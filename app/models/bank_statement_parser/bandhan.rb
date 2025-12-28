@@ -97,12 +97,30 @@ module BankStatementParser
       # Bandhan format: "December19, 2025 December19, 2025 Description INR500.00 Dr INR2,167.10"
       # Date format: MonthDay, Year (e.g., December19, 2025)
       
-      # Extract metadata
-      if match = text.match(/Opening.*?Balance.*?INR\s*([\d,]+\.\d{2})/im)
-        @metadata[:opening_balance] = parse_amount(match[1])
-      end
-      if match = text.match(/Closing.*?Balance.*?INR\s*([\d,]+\.\d{2})/im)
-        @metadata[:closing_balance] = parse_amount(match[1])
+      # Extract metadata from summary line
+      # Format: "Opening Balance  Total Credits  Total Debits  Closing Balance"
+      #         "INR122,047.78    INR997,261.00  INR1,117,141.68  INR2,167.10"
+      lines.each_with_index do |line, idx|
+        if line.match?(/Opening Balance.*Total Credits.*Total Debits.*Closing Balance/i)
+          # Values are on a line following the header
+          value_line = nil
+          (1..3).each do |offset|
+            next_line = lines[idx + offset]
+            if next_line && next_line.match?(/INR[\d,]+\.\d{2}.*INR[\d,]+\.\d{2}/)
+              value_line = next_line
+              break
+            end
+          end
+          
+          if value_line
+            amounts = value_line.scan(/INR\s*([\d,]+\.\d{2})/).flatten
+            if amounts.length >= 4
+              @metadata[:opening_balance] = parse_amount(amounts[0])
+              @metadata[:closing_balance] = parse_amount(amounts[3])
+            end
+          end
+          break
+        end
       end
 
       lines.each do |line|
