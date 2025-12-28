@@ -10,12 +10,12 @@ class Provider::Gemini::DocumentParser
     Return ONLY a valid JSON object with these fields:
     
     {
-      "lender_name": "Name of the bank/NBFC (e.g., HDFC Bank, ICICI Bank, Cred, Bajaj Finance)",
-      "loan_type": "One of: home_loan, personal, car_loan, education_loan, gold, business, lap, two_wheeler, consumer_durable, other",
+      "lender_name": "Name of the bank/NBFC (see mapping below)",
+      "loan_type": "One of: home_loan, personal, car_loan, education_loan, gold, business, lap, two_wheeler, consumer_durable, credit_line, other",
       "principal_amount": 0,
       "currency": "INR",
       "interest_rate": 0.0,
-      "rate_type": "fixed or floating",
+      "rate_type": "fixed or floating (IMPORTANT - see rule 7)",
       "tenure_months": 0,
       "emi_amount": 0,
       "emi_day": 0,
@@ -46,14 +46,55 @@ class Provider::Gemini::DocumentParser
     4. EMI day is the day of the month when EMI is debited (1-28)
     5. Confidence should be 0.0 to 1.0 based on how clearly you could extract the data
     6. If a field cannot be determined, use null for strings/dates, 0 for numbers
-    7. For loan_type, map common variations:
-       - "Housing Loan" / "Mortgage" / "HOUSING" / "Property Loan" → "home_loan"
-       - "Personal Loan" / "Consumer Loan" → "personal"
-       - "Vehicle Loan" / "Auto Loan" → "car_loan"
-       - "Education Loan" / "Student Loan" → "education_loan"
-       - "Loan Against Property" → "lap"
     
-    8. TRANSACTION EXTRACTION (CRITICAL - EXTRACT EVERY ROW):
+    7. RATE TYPE DETECTION (CRITICAL):
+       Return "floating" if ANY of these are found:
+       - "FLOATING" or "Floating" anywhere in document
+       - "VARIABLE RATE" or "Variable Rate"
+       - "MCLR" (Marginal Cost of Lending Rate)
+       - "RLLR" (Repo Linked Lending Rate)
+       - "EBLR" (External Benchmark Lending Rate)
+       - "PLR" (Prime Lending Rate)
+       - "Base Rate" or "BR"
+       - "Monthly Rest" / "MTHLY REST"
+       - Interest rate that changes over time in amortization table
+       - "Rate revision" or "Rate Reset" mentioned
+       
+       Return "fixed" ONLY if:
+       - "FIXED" or "Fixed Rate" explicitly stated
+       - Same interest rate throughout entire loan tenure
+       - Personal loans are usually fixed unless stated otherwise
+       
+    8. LENDER NAME MAPPING:
+       - "HDFC Bank" / "HDFC LTD" / "HDFC" → "HDFC Bank"
+       - "ICICI Bank" / "ICICI" → "ICICI Bank"
+       - "SBI" / "State Bank" → "State Bank of India"
+       - "Axis Bank" → "Axis Bank"
+       - "Kotak" / "Kotak Mahindra" → "Kotak Mahindra Bank"
+       - "Bajaj Finance" / "Bajaj Finserv" → "Bajaj Finance"
+       - "IDFC FIRST" / "IDFC First Bank" → "IDFC FIRST Bank"
+       - "Tata Capital" → "Tata Capital"
+       - "L&T Finance" → "L&T Finance"
+       - "Kisetsu Saison" / "CRED" → Use the actual lender name (Kisetsu Saison, IDFC FIRST, etc.)
+       - "Fullerton" / "Fullerton India" → "Fullerton India"
+       - "Piramal" → "Piramal Capital"
+       - "Indiabulls" → "Indiabulls Housing Finance"
+       - "LIC HFL" / "LIC Housing" → "LIC Housing Finance"
+       - "PNB Housing" → "PNB Housing Finance"
+       
+    9. LOAN TYPE MAPPING:
+       - "Housing Loan" / "Mortgage" / "HOUSING" / "Property Loan" / "Home Loan" → "home_loan"
+       - "Personal Loan" / "Consumer Loan" / "PL" → "personal"
+       - "Vehicle Loan" / "Auto Loan" / "Car Loan" → "car_loan"
+       - "Two Wheeler" / "Bike Loan" / "Scooter Loan" → "two_wheeler"
+       - "Education Loan" / "Student Loan" → "education_loan"
+       - "Loan Against Property" / "LAP" / "Mortgage Loan" → "lap"
+       - "Gold Loan" → "gold"
+       - "Business Loan" / "MSME" / "SME Loan" → "business"
+       - "Consumer Durable" / "CD Loan" / "EMI Card" → "consumer_durable"
+       - "Credit Line" / "Flexi Loan" / "Overdraft" → "credit_line"
+    
+    10. TRANSACTION EXTRACTION (CRITICAL - EXTRACT EVERY ROW):
        
        ⚠️ IMPORTANT: You MUST extract EVERY SINGLE transaction row from ALL pages of the document.
        Do NOT summarize. Do NOT skip rows. Extract each row individually.
