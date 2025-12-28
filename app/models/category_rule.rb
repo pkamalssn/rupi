@@ -1,28 +1,83 @@
 # frozen_string_literal: true
 
+require "digest"
+require "concurrent"
+
 # CategoryRule stores learned rules for auto-categorizing transactions.
 # 
 # RULE LIFECYCLE:
 # 1. AI creates rule as "candidate" (status: candidate, confidence: 0.65)
 # 2. After N matches, rule promoted to "active" but "probationary"
-# 3. If overridden during probation → quarantined (not deleted, for debugging)
+# 3. If overridden during probation → quarantined (IMMEDIATE, synchronous)
 # 4. After probation (5 uses without override) → fully trusted
 # 5. User confirmation immediately promotes to "active" + trusted
 # 6. Manual rules start active but can still be demoted if repeatedly wrong
 #
 # PERFORMANCE:
-# - pattern_hash for indexed lookups
-# - compiled_regex cached for regex rules
-# - Rules grouped by scope + account_id
+# - pattern_hash_exact (SHA256) for indexed exact-match lookups ONLY
+# - Class-level LRU regex cache (capped at 1000 entries)
+# - Pre-filtered queries by scope + status + account_id
 #
 # CAPACITY:
 # - Auto-prune lowest utility rules when limits exceeded
-# - Quarantine failed rules (don't delete) for debugging
+# - Quarantine cleanup: keep last N per family, delete >90 days old
 #
 class CategoryRule < ApplicationRecord
   belongs_to :family
   belongs_to :category
-  belongs_to :account, optional: true  # For account-specific rules
+  belongs_to :account, optional: true
+
+  # ==========================================
+  # CLASS-LEVEL REGEX CACHE (LRU-ish, capped)
+  # ==========================================
+  REGEX_CACHE_MAX_SIZE = 1000
+  @regex_cache = Concurrent::Map.new
+  @regex_cache_keys = []  # For LRU eviction
+  @regex_cache_mutex = Mutex.new
+  
+  class << self
+    attr_reader :regex_cache, :regex_cache_keys, :regex_cache_mutex
+    
+    def cached_regex(pattern, flags = Regexp::IGNORECASE)
+      cache_key = "#{pattern}:#{flags}"
+      
+      # Try cache first
+      cached = @regex_cache[cache_key]
+      return cached if cached
+      
+      # Compile and cache
+      compiled = begin
+        Regexp.new(pattern, flags)
+      rescue RegexpError
+        nil
+      end
+      
+      return nil unless compiled
+      
+      # LRU eviction if needed
+      @regex_cache_mutex.synchronize do
+        if @regex_cache_keys.size >= REGEX_CACHE_MAX_SIZE
+          oldest_key = @regex_cache_keys.shift
+          @regex_cache.delete(oldest_key)
+        end
+        @regex_cache_keys.push(cache_key)
+      end
+      
+      @regex_cache[cache_key] = compiled
+      compiled
+    end
+    
+    def cached_word_boundary_regex(pattern)
+      cached_regex("\\b#{Regexp.escape(pattern)}\\b", Regexp::IGNORECASE)
+    end
+    
+    def clear_regex_cache!
+      @regex_cache_mutex.synchronize do
+        @regex_cache.clear
+        @regex_cache_keys.clear
+      end
+    end
+  end
 
   # Match types ordered by specificity
   MATCH_TYPES = {
@@ -48,6 +103,8 @@ class CategoryRule < ApplicationRecord
   MAX_ACCOUNT_SPECIFIC_RULES = 2000
   MAX_GLOBAL_RULES = 5000
   MAX_TOTAL_RULES_PER_FAMILY = 10000
+  MAX_QUARANTINED_PER_FAMILY = 2000
+  QUARANTINE_RETENTION_DAYS = 90
   
   # Thresholds
   PROMOTION_THRESHOLD = 2
@@ -78,37 +135,26 @@ class CategoryRule < ApplicationRecord
   scope :by_priority, -> { order(priority: :desc, confidence: :desc) }
   scope :for_scope, ->(scope_type) { where(scope: [scope_type, "global"]) }
   scope :by_utility, -> { order(Arel.sql("(times_matched - (COALESCE(times_overridden, 0) * 3) - EXTRACT(EPOCH FROM (NOW() - created_at)) / 86400 / 30) DESC")) }
+  scope :exact_match_type, -> { where(match_type: "exact") }
 
   before_validation :calculate_priority
   before_validation :set_defaults, on: :create
   before_validation :detect_regex_type
-  before_validation :compute_pattern_hash
-  before_save :clear_compiled_regex_cache
+  before_validation :compute_pattern_hashes
 
   # ==========================================
-  # PATTERN HASH & INDEXING
+  # PATTERN HASHES (SHA256, for exact rules only)
   # ==========================================
   
-  def compute_pattern_hash
-    self.pattern_hash = Digest::MD5.hexdigest(pattern.to_s.downcase.strip)
-  end
-
-  # ==========================================
-  # COMPILED REGEX CACHE
-  # ==========================================
-  
-  def compiled_regex
-    return nil unless match_type&.start_with?("regex")
-    
-    @compiled_regex ||= begin
-      Regexp.new(pattern, Regexp::IGNORECASE)
-    rescue RegexpError
-      nil
+  def compute_pattern_hashes
+    # Only compute hash for exact match rules
+    if match_type == "exact"
+      # Use light normalization (same as matching uses)
+      normalized = self.class.normalize_light(pattern.to_s)
+      self.pattern_hash_exact = Digest::SHA256.hexdigest(normalized)
+    else
+      self.pattern_hash_exact = nil
     end
-  end
-  
-  def clear_compiled_regex_cache
-    @compiled_regex = nil
   end
 
   # ==========================================
@@ -147,13 +193,25 @@ class CategoryRule < ApplicationRecord
     
     normalized = normalize_light(description)
     
-    # FAST PATH: Try exact hash match first
-    pattern_hash = Digest::MD5.hexdigest(normalized)
-    exact_match = active.where(family: family, pattern_hash: pattern_hash).first
-    return exact_match if exact_match&.matches?(normalized, description)
+    # FAST PATH: Hash lookup for EXACT rules only
+    description_hash = Digest::SHA256.hexdigest(normalized)
+    exact_match = active
+      .exact_match_type
+      .where(family: family, pattern_hash_exact: description_hash)
+      .for_scope(scope)
+      .first
     
-    # Build optimized query - pre-filter by scope + account
-    query = active.where(family: family).for_scope(scope).by_priority
+    if exact_match
+      # Double-check with actual matching (hash collision safety)
+      return exact_match if exact_match.matches?(normalized, description)
+    end
+    
+    # STANDARD PATH: Query with proper indexes
+    # Index: (family_id, status, scope) and (family_id, status, priority DESC)
+    query = active
+      .where(family: family)
+      .for_scope(scope)
+      .by_priority
     
     if account
       query = query.where("account_id IS NULL OR account_id = ?", account.id)
@@ -161,8 +219,7 @@ class CategoryRule < ApplicationRecord
       query = query.where(account_id: nil)
     end
     
-    # Group by match_type for ordered checking (exact → starts_with → etc.)
-    # Check in batches to avoid loading all into memory
+    # Use find_each for memory efficiency at scale
     query.find_each(batch_size: 100) do |rule|
       return rule if rule.matches?(normalized, description)
     end
@@ -192,13 +249,14 @@ class CategoryRule < ApplicationRecord
     when "ends_with"
       normalized_description.end_with?(pattern_lower) || raw_lower.end_with?(pattern_lower)
     when "regex_anchored", "regex"
-      regex = compiled_regex
+      regex = self.class.cached_regex(pattern, Regexp::IGNORECASE)
       return false unless regex
       normalized_description.match?(regex) || raw_lower.match?(regex)
     else # contains
       if generic_pattern?
-        word_boundary_match?(normalized_description, pattern_lower) || 
-          word_boundary_match?(raw_lower, pattern_lower)
+        regex = self.class.cached_word_boundary_regex(pattern_lower)
+        return false unless regex
+        normalized_description.match?(regex) || raw_lower.match?(regex)
       else
         normalized_description.include?(pattern_lower) || raw_lower.include?(pattern_lower)
       end
@@ -216,39 +274,26 @@ class CategoryRule < ApplicationRecord
   def generic_pattern?
     GENERIC_PATTERNS.any? { |g| pattern.downcase.include?(g) }
   end
-  
-  def word_boundary_match?(description, pattern)
-    @word_boundary_regex ||= {}
-    @word_boundary_regex[pattern] ||= Regexp.new("\\b#{Regexp.escape(pattern)}\\b", Regexp::IGNORECASE)
-    description.match?(@word_boundary_regex[pattern])
-  rescue RegexpError
-    description.include?(pattern)
-  end
 
   # ==========================================
   # CAPACITY MANAGEMENT & AUTO-PRUNE
   # ==========================================
   
   def self.enforce_limits!(family)
-    # Check global rules
+    # Prune active rules if over limit
     global_count = where(family: family, scope: "global", status: "active").count
     if global_count > MAX_GLOBAL_RULES
       prune_lowest_utility!(family, scope: "global", target: MAX_GLOBAL_RULES)
     end
     
-    # Check account-specific rules per account
-    family.accounts.each do |account|
-      account_count = where(family: family, account: account, status: "active").count
-      if account_count > MAX_ACCOUNT_SPECIFIC_RULES
-        prune_lowest_utility!(family, account: account, target: MAX_ACCOUNT_SPECIFIC_RULES)
-      end
-    end
-    
-    # Check total rules
+    # Check total
     total_count = where(family: family).where.not(status: "quarantined").count
     if total_count > MAX_TOTAL_RULES_PER_FAMILY
       prune_lowest_utility!(family, target: MAX_TOTAL_RULES_PER_FAMILY)
     end
+    
+    # Clean up quarantined rules
+    cleanup_quarantined!(family)
   end
   
   def self.prune_lowest_utility!(family, scope: nil, account: nil, target:)
@@ -261,25 +306,44 @@ class CategoryRule < ApplicationRecord
     
     to_prune = current_count - target
     
-    # Get lowest utility rules (but never prune user_confirmed or manual)
     lowest = query
       .where(user_confirmed: false)
       .where.not(source: "manual")
       .by_utility
       .last(to_prune)
     
-    lowest.each do |rule|
-      rule.quarantine!(reason: "auto_pruned_capacity")
-    end
+    lowest.each { |rule| rule.quarantine!(reason: "auto_pruned_capacity") }
     
     Rails.logger.info("CategoryRule auto-pruned #{lowest.size} rules for family #{family.id}")
   end
   
-  # Utility score for pruning decisions
+  # Clean up old/excess quarantined rules
+  def self.cleanup_quarantined!(family)
+    # Delete quarantined rules older than retention period (except manual)
+    old_quarantined = where(family: family, status: "quarantined")
+      .where("quarantined_at < ?", QUARANTINE_RETENTION_DAYS.days.ago)
+      .where.not(source: "manual")
+    
+    deleted_old = old_quarantined.delete_all
+    
+    # Keep only last N quarantined per family
+    quarantine_count = where(family: family, status: "quarantined").count
+    if quarantine_count > MAX_QUARANTINED_PER_FAMILY
+      excess = quarantine_count - MAX_QUARANTINED_PER_FAMILY
+      oldest_ids = where(family: family, status: "quarantined")
+        .where.not(source: "manual")
+        .order(quarantined_at: :asc)
+        .limit(excess)
+        .pluck(:id)
+      
+      deleted_excess = where(id: oldest_ids).delete_all
+      Rails.logger.info("CategoryRule cleaned #{deleted_old + deleted_excess} quarantined rules for family #{family.id}")
+    end
+  end
+  
   def utility_score
     age_days = (Time.current - created_at) / 1.day
-    age_decay = age_days / 30.0  # Decay per month
-    
+    age_decay = age_days / 30.0
     times_matched - ((times_overridden || 0) * 3) - age_decay
   end
 
@@ -297,7 +361,7 @@ class CategoryRule < ApplicationRecord
       promote_to_active!
     end
     
-    if probationary? && times_matched >= PROBATION_USES && recent_overrides_count == 0
+    if probationary? && times_matched >= PROBATION_USES && (times_overridden || 0) == 0
       exit_probation!
     end
     
@@ -321,10 +385,6 @@ class CategoryRule < ApplicationRecord
     [confidence + increment, 0.99].min
   end
   
-  def recent_overrides_count
-    times_overridden || 0
-  end
-  
   def promote_to_active!
     update!(status: "active", probationary: true)
     Rails.logger.info("CategoryRule promoted to active (probationary): pattern='#{pattern}'")
@@ -336,10 +396,11 @@ class CategoryRule < ApplicationRecord
   end
   
   # ==========================================
-  # QUARANTINE (instead of delete)
+  # QUARANTINE (SYNCHRONOUS - no background job!)
   # ==========================================
   
   def quarantine!(reason:)
+    # IMPORTANT: This is synchronous to ensure immediate effect
     update!(
       status: "quarantined",
       quarantine_reason: reason,
@@ -348,26 +409,31 @@ class CategoryRule < ApplicationRecord
     Rails.logger.warn("CategoryRule quarantined: pattern='#{pattern}' reason='#{reason}'")
   end
   
+  # SYNCHRONOUS override - must be instant for user trust
   def record_override!
-    increment!(:times_overridden)
-    update_column(:last_overridden_at, Time.current)
-    
-    decrement = source == "ai" ? 0.20 : 0.15
-    new_confidence = [confidence - decrement, 0].max
-    update_column(:confidence, new_confidence)
-    
-    # Immediate quarantine during probation
-    if probationary? && times_overridden > PROBATION_OVERRIDE_TOLERANCE
-      quarantine!(reason: "failed_probation")
-      return
+    # Use transaction for consistency
+    self.class.transaction do
+      increment!(:times_overridden)
+      update_column(:last_overridden_at, Time.current)
+      
+      decrement = source == "ai" ? 0.20 : 0.15
+      new_confidence = [confidence - decrement, 0].max
+      update_column(:confidence, new_confidence)
+      
+      # Immediate quarantine during probation (no delay!)
+      if probationary? && (times_overridden || 0) > PROBATION_OVERRIDE_TOLERANCE
+        quarantine!(reason: "failed_probation")
+        return
+      end
+      
+      # Quarantine if confidence too low
+      if new_confidence < MIN_CONFIDENCE
+        quarantine!(reason: "low_confidence")
+        return
+      end
+      
+      recalculate_priority!
     end
-    
-    # Quarantine if confidence too low
-    if new_confidence < MIN_CONFIDENCE
-      quarantine!(reason: "low_confidence")
-    end
-    
-    recalculate_priority!
   end
   
   def confirm!
@@ -454,9 +520,7 @@ class CategoryRule < ApplicationRecord
       user_confirmed: false
     )
     
-    # Enforce limits after creation
     enforce_limits!(family) if rule.persisted?
-    
     rule
   end
 
@@ -472,7 +536,7 @@ class CategoryRule < ApplicationRecord
       if existing.category_id == category.id
         existing.confirm!
       else
-        existing.record_override!
+        existing.record_override!  # SYNCHRONOUS!
         return create(
           family: transaction.family,
           category: category,

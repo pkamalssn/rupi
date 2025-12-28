@@ -7,7 +7,7 @@ class CreateCategoryRules < ActiveRecord::Migration[7.2]
       
       # Core matching
       t.string :pattern, null: false
-      t.string :pattern_hash                                  # MD5 hash for fast exact lookup
+      t.string :pattern_hash_exact                            # SHA256 hash for exact-match fast lookup ONLY
       t.string :match_type, default: "contains", null: false  # exact, starts_with, ends_with, contains, regex, regex_anchored
       t.string :scope, default: "narration", null: false      # global, narration, merchant, account_specific
       
@@ -36,22 +36,30 @@ class CreateCategoryRules < ActiveRecord::Migration[7.2]
       t.timestamps
     end
     
+    # ==========================================
+    # INDEXES (Optimized for 10k+ users)
+    # ==========================================
+    
     # Unique pattern per family + scope
-    add_index :category_rules, [:family_id, :pattern, :scope], unique: true
+    add_index :category_rules, [:family_id, :pattern, :scope], unique: true, name: "idx_rules_unique_pattern"
     
-    # Fast hash-based exact lookup
-    add_index :category_rules, [:family_id, :pattern_hash]
+    # FAST PATH: Hash lookup for exact matches only
+    add_index :category_rules, [:family_id, :status, :pattern_hash_exact], name: "idx_rules_exact_hash_lookup"
     
-    # Fast lookups for active rules by priority
-    add_index :category_rules, [:family_id, :status, :priority], order: { priority: :desc }
+    # Scope-based queries with status filter
+    add_index :category_rules, [:family_id, :status, :scope], name: "idx_rules_scope_lookup"
     
-    # Find rules by category (for rule management UI)
-    add_index :category_rules, [:family_id, :category_id]
+    # Priority-ordered retrieval
+    add_index :category_rules, [:family_id, :status, :priority], order: { priority: :desc }, name: "idx_rules_priority"
+    
+    # Category-based lookups (for rule management UI)
+    add_index :category_rules, [:family_id, :category_id], name: "idx_rules_category"
     
     # Account-specific rule lookup
-    add_index :category_rules, [:family_id, :account_id]
+    add_index :category_rules, [:family_id, :account_id], name: "idx_rules_account"
     
-    # Scope-based queries
-    add_index :category_rules, [:family_id, :scope, :status]
+    # Quarantine cleanup queries
+    add_index :category_rules, [:family_id, :status, :quarantined_at], 
+      where: "status = 'quarantined'", name: "idx_rules_quarantine_cleanup"
   end
 end
