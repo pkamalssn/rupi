@@ -92,6 +92,9 @@ class Provider::Gemini::AutoCategorizer
   end
 
   def json_schema
+    # NOTE: Removed enum constraints for transaction_id and category_name
+    # because Gemini 3 Flash Preview returns 400 when enums are too large (177+ items)
+    # The prompt already instructs the model on valid category names
     {
       type: "object",
       properties: {
@@ -103,13 +106,11 @@ class Provider::Gemini::AutoCategorizer
             properties: {
               transaction_id: {
                 type: "string",
-                description: "The internal ID of the original transaction",
-                enum: transactions.map { |t| t[:id].to_s }
+                description: "The internal UUID of the original transaction"
               },
               category_name: {
                 type: "string",
-                description: "The matched category name of the transaction, or null if no match",
-                enum: [*user_categories.map { |c| c[:name] }, "null"]
+                description: "The matched category name of the transaction, or 'null' if no match"
               }
             },
             required: ["transaction_id", "category_name"]
