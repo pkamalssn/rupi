@@ -288,11 +288,28 @@ class BankStatementImport < Import
     
     # AI-powered categorization for uncategorized transactions
     # Collect IDs of transactions that don't have a category yet
-    uncategorized_transaction_ids = new_transactions.map(&:id).compact
-    if uncategorized_transaction_ids.any?
-      family.auto_categorize_transactions_later(
-        Transaction.where(id: uncategorized_transaction_ids, category_id: nil)
+    uncategorized_transactions = Transaction.where(id: new_transactions.map(&:id).compact, category_id: nil)
+    uncategorized_count = uncategorized_transactions.count
+    
+    if uncategorized_count > 0
+      # Start categorization tracking on the import
+      job = AutoCategorizeJob.perform_later(
+        family, 
+        transaction_ids: uncategorized_transactions.pluck(:id),
+        import_id: self.id
       )
+      
+      # Update import with categorization tracking info
+      start_categorization!(
+        job_id: job.job_id,
+        total_count: uncategorized_count
+      )
+      
+      Rails.logger.info("[Import #{id}] Started AI categorization for #{uncategorized_count} transactions")
+    else
+      # No transactions to categorize - mark as skipped
+      skip_categorization!
+      Rails.logger.info("[Import #{id}] No uncategorized transactions, skipping AI categorization")
     end
     
     # =====================================================

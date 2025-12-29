@@ -1,7 +1,7 @@
 class ImportsController < ApplicationController
   include SettingsHelper
 
-  before_action :set_import, only: %i[show publish destroy revert apply_template]
+  before_action :set_import, only: %i[show publish destroy revert apply_template recategorize]
 
   def publish
     @import.publish_later
@@ -9,6 +9,35 @@ class ImportsController < ApplicationController
     redirect_to import_path(@import), notice: "Your import has started in the background."
   rescue Import::MaxRowCountExceededError
     redirect_back_or_to import_path(@import), alert: "Your import exceeds the maximum row count of #{@import.max_row_count}."
+  end
+  
+  def recategorize
+    # Get uncategorized transactions from this import
+    uncategorized_transactions = Transaction.joins(:entry)
+                                            .where(entries: { import_id: @import.id })
+                                            .where(category_id: nil)
+    
+    uncategorized_count = uncategorized_transactions.count
+    
+    if uncategorized_count == 0
+      redirect_to import_path(@import), notice: "All transactions are already categorized!"
+      return
+    end
+    
+    # Start AI categorization
+    job = AutoCategorizeJob.perform_later(
+      Current.family,
+      transaction_ids: uncategorized_transactions.pluck(:id),
+      import_id: @import.id
+    )
+    
+    # Update import tracking
+    @import.start_categorization!(
+      job_id: job.job_id,
+      total_count: uncategorized_count
+    )
+    
+    redirect_to import_path(@import), notice: "AI categorization started for #{uncategorized_count} transactions..."
   end
 
   def index

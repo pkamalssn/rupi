@@ -42,6 +42,72 @@ class Import < ApplicationRecord
   has_many :accounts, dependent: :destroy
   has_many :entries, dependent: :destroy
 
+  # =====================================================
+  # CATEGORIZATION STATUS TRACKING
+  # =====================================================
+  # These statuses track the AI categorization progress separately
+  # from the main import status
+  CATEGORIZATION_STATUSES = %w[pending in_progress completed skipped failed].freeze
+  
+  # Check if AI categorization is in progress
+  def categorizing?
+    categorization_status == "in_progress"
+  end
+  
+  # Check if AI categorization is done
+  def categorization_done?
+    categorization_status.in?(%w[completed skipped failed]) || categorization_status.nil?
+  end
+  
+  # Check if we should wait for categorization before showing "complete"
+  def fully_complete?
+    complete? && categorization_done?
+  end
+  
+  # Calculate categorization progress percentage
+  def categorization_progress
+    return 100 if categorization_done? || total_to_categorize.to_i == 0
+    return 0 if categorized_count.to_i == 0
+    
+    ((categorized_count.to_f / total_to_categorize) * 100).round
+  end
+  
+  # Start categorization tracking
+  def start_categorization!(job_id:, total_count:)
+    update!(
+      categorization_status: "in_progress",
+      categorization_job_id: job_id,
+      total_to_categorize: total_count,
+      categorized_count: 0
+    )
+  end
+  
+  # Update categorization progress
+  def update_categorization_progress!(count)
+    update!(categorized_count: count)
+  end
+  
+  # Mark categorization as complete
+  def complete_categorization!(final_count)
+    update!(
+      categorization_status: "completed",
+      categorized_count: final_count
+    )
+  end
+  
+  # Mark categorization as skipped (no transactions to categorize)
+  def skip_categorization!
+    update!(categorization_status: "skipped")
+  end
+  
+  # Mark categorization as failed
+  def fail_categorization!(error_message = nil)
+    update!(
+      categorization_status: "failed",
+      error: error_message
+    )
+  end
+
   class << self
     def parse_csv_str(csv_str, col_sep: ",")
       CSV.parse(

@@ -1,18 +1,40 @@
 <%# locals: (import:) %>
 
-<%# Auto-refresh every 2 seconds while importing %>
-<% if import.importing? %>
+<%# Auto-refresh while importing or categorizing %>
+<% if import.importing? || import.categorizing? %>
   <meta http-equiv="refresh" content="2">
 <% end %>
+
+<%
+  # Determine current step
+  if import.importing?
+    current_step = 2  # Parsing/Importing
+  elsif import.categorizing?
+    current_step = 3  # AI Categorizing
+  elsif import.complete? && import.categorization_done?
+    current_step = 4  # Complete
+  else
+    current_step = 1  # Uploaded
+  end
+  
+  # Get progress for categorization
+  categorization_progress = import.categorization_progress
+  total_to_cat = import.total_to_categorize.to_i
+  categorized = import.categorized_count.to_i
+%>
 
 <div class="h-full flex flex-col justify-center items-center py-12">
   <div class="space-y-6 max-w-md w-full px-4">
     
     <%# Animated progress bar %>
-    <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-      <div class="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 animate-pulse" 
-           style="width: 100%; animation: shimmer 2s infinite linear;">
-      </div>
+    <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+      <% if current_step < 4 %>
+        <div class="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 rounded-full transition-all duration-500"
+             style="width: <%= current_step == 3 && total_to_cat > 0 ? categorization_progress : (current_step * 25) %>%; background-size: 200% 100%; animation: shimmer 2s infinite linear;">
+        </div>
+      <% else %>
+        <div class="h-full bg-green-500 rounded-full" style="width: 100%"></div>
+      <% end %>
     </div>
     
     <style>
@@ -23,20 +45,38 @@
     </style>
 
     <%# Status icon %>
-    <div class="mx-auto bg-blue-100 h-16 w-16 rounded-full flex items-center justify-center">
-      <div class="animate-spin">
-        <%= icon "loader-2", class: "w-8 h-8 text-blue-600" %>
-      </div>
+    <div class="mx-auto <%= current_step == 4 ? 'bg-green-100' : 'bg-blue-100' %> h-16 w-16 rounded-full flex items-center justify-center">
+      <% if current_step == 4 %>
+        <%= icon "check-circle-2", class: "w-8 h-8 text-green-600" %>
+      <% else %>
+        <div class="animate-spin">
+          <%= icon "loader-2", class: "w-8 h-8 text-blue-600" %>
+        </div>
+      <% end %>
     </div>
 
     <%# Status text %>
-    <div class="text-center space-y-2">
+    <div class="text-center space-y-2" id="import_status">
       <h1 class="font-semibold text-primary text-2xl">
-        <%= import.is_a?(BankStatementImport) ? "Processing Bank Statement" : "Import in Progress" %>
+        <% if current_step == 2 %>
+          Importing Transactions...
+        <% elsif current_step == 3 %>
+          AI Categorizing...
+        <% else %>
+          Processing...
+        <% end %>
       </h1>
       <p class="text-sm text-secondary">
         <% if import.is_a?(BankStatementImport) %>
-          Parsing your <%= import.bank_name.gsub('_', ' ') %> statement and extracting transactions...
+          <% if current_step == 2 %>
+            Parsing your <%= import.bank_name.gsub('_', ' ') %> statement...
+          <% elsif current_step == 3 %>
+            <% if total_to_cat > 0 %>
+              Categorizing <%= categorized %> of <%= total_to_cat %> transactions with AI
+            <% else %>
+              Running AI categorization...
+            <% end %>
+          <% end %>
         <% else %>
           Your import is being processed. This usually takes a few seconds.
         <% end %>
@@ -48,29 +88,81 @@
 
     <%# Progress steps %>
     <div class="bg-container-inset rounded-lg p-4 space-y-3">
+      <%# Step 1: File uploaded %>
       <div class="flex items-center gap-3">
-        <div class="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center">
-          <%= icon "check", class: "w-3 h-3 text-white" %>
+        <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+          <%= icon "check", class: "w-4 h-4 text-white" %>
         </div>
-        <span class="text-sm text-primary">File uploaded</span>
+        <span class="text-sm text-primary font-medium">File uploaded</span>
       </div>
+      
+      <%# Step 2: Parsing transactions %>
       <div class="flex items-center gap-3">
-        <div class="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center animate-pulse">
-          <div class="w-2 h-2 bg-white rounded-full"></div>
-        </div>
-        <span class="text-sm text-primary">Parsing transactions...</span>
+        <% if current_step > 2 %>
+          <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+            <%= icon "check", class: "w-4 h-4 text-white" %>
+          </div>
+          <span class="text-sm text-primary font-medium">Transactions imported</span>
+        <% elsif current_step == 2 %>
+          <div class="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center animate-pulse flex-shrink-0">
+            <div class="w-2 h-2 bg-white rounded-full"></div>
+          </div>
+          <span class="text-sm text-primary font-medium">Importing transactions...</span>
+        <% else %>
+          <div class="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+            <span class="text-xs text-gray-500">2</span>
+          </div>
+          <span class="text-sm text-secondary">Import transactions</span>
+        <% end %>
       </div>
+      
+      <%# Step 3: AI Categorization %>
       <div class="flex items-center gap-3">
-        <div class="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center">
-          <span class="text-xs text-gray-500">3</span>
-        </div>
-        <span class="text-sm text-secondary">Categorizing with AI</span>
+        <% if current_step > 3 %>
+          <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+            <%= icon "check", class: "w-4 h-4 text-white" %>
+          </div>
+          <div class="flex-1">
+            <span class="text-sm text-primary font-medium">AI categorization complete</span>
+            <% if import.categorized_count.to_i > 0 %>
+              <span class="text-xs text-green-600 ml-2">
+                (<%= import.categorized_count %> categorized)
+              </span>
+            <% end %>
+          </div>
+        <% elsif current_step == 3 %>
+          <div class="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center animate-pulse flex-shrink-0">
+            <div class="w-2 h-2 bg-white rounded-full"></div>
+          </div>
+          <div class="flex-1">
+            <span class="text-sm text-primary font-medium">AI categorizing...</span>
+            <% if total_to_cat > 0 %>
+              <span class="text-xs text-purple-600 ml-2">
+                (<%= categorized %>/<%= total_to_cat %>)
+              </span>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+            <span class="text-xs text-gray-500">3</span>
+          </div>
+          <span class="text-sm text-secondary">AI categorization</span>
+        <% end %>
       </div>
+      
+      <%# Step 4: Complete %>
       <div class="flex items-center gap-3">
-        <div class="w-5 h-5 rounded-full bg-gray-300 flex items-center justify-center">
-          <span class="text-xs text-gray-500">4</span>
-        </div>
-        <span class="text-sm text-secondary">Complete</span>
+        <% if current_step == 4 %>
+          <div class="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+            <%= icon "check", class: "w-4 h-4 text-white" %>
+          </div>
+          <span class="text-sm text-primary font-medium">Complete!</span>
+        <% else %>
+          <div class="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0">
+            <span class="text-xs text-gray-500">4</span>
+          </div>
+          <span class="text-sm text-secondary">Complete</span>
+        <% end %>
       </div>
     </div>
 

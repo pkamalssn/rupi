@@ -101,6 +101,15 @@
           href: transactions_path(q: { categories: ["Uncategorized"], start_date: 1.year.ago.to_date.to_s }),
           icon: "alert-circle"
         ) %>
+        
+        <%# Re-categorize button %>
+        <%= button_to recategorize_import_path(import), 
+            method: :post,
+            class: "w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all bg-purple-100 text-purple-700 hover:bg-purple-200 border border-purple-200",
+            data: { turbo_confirm: "Run AI categorization on #{uncategorized_count} uncategorized transactions?" } do %>
+          <%= icon "sparkles", class: "w-4 h-4" %>
+          <span>Re-categorize with AI</span>
+        <% end %>
       <% end %>
       
       <%= render DS::Link.new(

@@ -5,9 +5,17 @@
 <%= content_for :previous_path, import_confirm_path(@import) %>
 
 <% if @import.importing? %>
+  <%# Still parsing/importing %>
   <%= render "imports/importing", import: @import %>
-<% elsif @import.complete? %>
+<% elsif @import.complete? && @import.categorizing? %>
+  <%# Import done but AI still categorizing - show importing view with step 3 active %>
+  <%= render "imports/importing", import: @import %>
+<% elsif @import.complete? && @import.categorization_done? %>
+  <%# Fully complete - show success %>
   <%= render "imports/success", import: @import %>
+<% elsif @import.complete? %>
+  <%# Complete but no categorization status yet - treat as still processing %>
+  <%= render "imports/importing", import: @import %>
 <% elsif @import.failed? %>
   <%= render "imports/failure", import: @import %>
 <% elsif @import.revert_failed? %>

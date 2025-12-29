@@ -1,0 +1,27 @@
+<%# Turbo Stream update partial for import status %>
+<%= turbo_stream.replace "import_status" do %>
+  <div class="text-center space-y-2" id="import_status">
+    <% if import.categorizing? %>
+      <h1 class="font-semibold text-primary text-2xl">AI Categorizing...</h1>
+      <p class="text-sm text-secondary">
+        <% if import.total_to_categorize.to_i > 0 %>
+          Categorizing <%= import.categorized_count.to_i %> of <%= import.total_to_categorize %> transactions
+        <% else %>
+          Running AI categorization...
+        <% end %>
+      </p>
+    <% elsif import.categorization_done? %>
+      <h1 class="font-semibold text-primary text-2xl">🎉 Complete!</h1>
+      <p class="text-sm text-secondary">
+        <% if import.categorized_count.to_i > 0 %>
+          Successfully categorized <%= import.categorized_count %> transactions with AI
+        <% else %>
+          Import complete
+        <% end %>
+      </p>
+    <% else %>
+      <h1 class="font-semibold text-primary text-2xl">Processing...</h1>
+      <p class="text-sm text-secondary">Please wait...</p>
+    <% end %>
+  </div>
+<% end %>
