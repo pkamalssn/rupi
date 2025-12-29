@@ -120,12 +120,16 @@ class BankStatementImport < Import
 
   def import!
     transaction do
-      # Find or create the account for this statement
-      mapped_account = find_or_create_account
-
-      # Parse the statement file
+      # IMPORTANT: Parse FIRST to get metadata (closing balance, account type)
+      # Then create account with correct balance
       parsed_data = parse_statement
-
+      
+      # Extract metadata from parsed data
+      @parsed_metadata = extract_metadata(parsed_data)
+      
+      # Now find or create the account with the parsed closing balance
+      mapped_account = find_or_create_account
+      
       # Handle different parser outputs
       if investment_statement?
         import_investment_data(parsed_data, mapped_account)
@@ -137,6 +141,17 @@ class BankStatementImport < Import
     # After successful import, queue EMI reconciliation for any loan accounts
     # This matches EMI debits (like "HDFC LTD EMI") to loan EMI entries
     LoanEmiReconciliationJob.perform_later(family.id) if family.present?
+  end
+  
+  # Extract metadata from parsed data for account creation
+  def extract_metadata(parsed_data)
+    return {} unless parsed_data.is_a?(Hash)
+    
+    metadata = parsed_data[:metadata] || {}
+    metadata[:opening_balance] ||= parsed_data[:opening_balance]
+    metadata[:closing_balance] ||= parsed_data[:closing_balance]
+    metadata[:account_type] ||= parsed_data[:account_type]
+    metadata
   end
 
   private
@@ -399,6 +414,10 @@ class BankStatementImport < Import
     # Determine account type based on statement type
     account_name = "#{bank_name.gsub('_', ' ')} Import"
     
+    # Get closing balance from parsed metadata (or 0 if not available)
+    # Note: @parsed_metadata is set by extract_metadata() called before this
+    initial_balance = @parsed_metadata&.dig(:closing_balance).to_f || 0
+    
     if credit_card_statement?
       # Credit cards are liabilities
       existing = family.accounts.where(accountable_type: "CreditCard")
@@ -407,7 +426,7 @@ class BankStatementImport < Import
 
       family.accounts.create!(
         name: account_name,
-        balance: 0,
+        balance: initial_balance,
         currency: family.currency,
         accountable: CreditCard.new
       )
@@ -419,7 +438,7 @@ class BankStatementImport < Import
 
       family.accounts.create!(
         name: account_name,
-        balance: 0,
+        balance: initial_balance,
         currency: family.currency,
         accountable: Investment.new
       )
@@ -432,13 +451,50 @@ class BankStatementImport < Import
                                 .find_by("accounts.name ILIKE ?", "%#{bank_name}%")
       return existing if existing
 
+      # Smart subtype detection:
+      # - Indian banks (HDFC, ICICI, SBI, etc.) are typically Savings accounts
+      # - Wise and foreign banks might be Checking
+      # - Can be overridden by metadata from parser
+      subtype = detect_account_subtype
+      
       family.accounts.create!(
         name: account_name,
-        balance: 0,
+        balance: initial_balance,
         currency: account_currency,
-        accountable: Depository.new(subtype: "checking")
+        accountable: Depository.new(subtype: subtype)
       )
     end
+  end
+  
+  # Detect if this is a savings or checking account
+  # Indian bank accounts are almost always Savings accounts
+  INDIAN_BANKS = %w[
+    HDFC ICICI SBI Axis Kotak RBL Bandhan Jupiter Equitas KVB UBI
+  ].freeze
+  
+  CHECKING_BANKS = %w[
+    Wise
+  ].freeze
+  
+  def detect_account_subtype
+    # 1. Check if parser provided explicit account type
+    if @parsed_metadata&.dig(:account_type).present?
+      return @parsed_metadata[:account_type].to_s.downcase == "checking" ? "checking" : "savings"
+    end
+    
+    # 2. Indian banks are almost always savings
+    base_bank = bank_name.split('_').first
+    if INDIAN_BANKS.include?(base_bank)
+      return "savings"
+    end
+    
+    # 3. Some specific banks are typically checking
+    if CHECKING_BANKS.include?(base_bank)
+      return "checking"
+    end
+    
+    # 4. Default to savings (most common globally)
+    "savings"
   end
 
   def parse_statement
