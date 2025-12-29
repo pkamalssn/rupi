@@ -58,30 +58,58 @@ class Provider::Gemini::AutoCategorizer
     PROMPT
   end
 
+
   def instructions
     <<~INSTRUCTIONS.strip_heredoc
-      You are an assistant to a consumer personal finance app. You will be provided a list
-      of the user's transactions and a list of the user's categories. Your job is to auto-categorize
-      each transaction.
+      You are an assistant to a consumer personal finance app for Indian users. You will be provided a list
+      of the user's transactions and a list of their existing categories. Your job is to categorize
+      each transaction - either to an existing category OR suggest a new appropriate category.
 
-      Closely follow ALL the rules below while auto-categorizing:
+      RULES FOR CATEGORIZATION:
 
-      - Return 1 result per transaction
-      - Correlate each transaction by ID (transaction_id)
-      - Attempt to match the most specific category possible (i.e. subcategory over parent category)
-      - Category and transaction classifications should match (i.e. if transaction is an "expense", the category must have classification of "expense")
-      - If you don't know the category, return "null"
-        - You should always favor "null" over false positives
-        - Be slightly pessimistic. Only match a category if you're 60%+ confident it is the correct one.
-      - Each transaction has varying metadata that can be used to determine the category
-        - Note: "hint" comes from 3rd party aggregators and typically represents a category name that
-          may or may not match any of the user-supplied categories
+      1. EXISTING CATEGORIES (Preferred):
+         - Match to existing categories from the provided list when possible
+         - Use exact category names from the list
+         - Match expense transactions only to expense categories
+         - Match income transactions only to income categories
+         - Only match if 60%+ confident
 
-      IMPORTANT:
-      - Use EXACT category names from the provided list
-      - Return "null" (as a string) if you cannot confidently match a category
-      - Match expense transactions only to expense categories
-      - Match income transactions only to income categories
+      2. SUGGEST NEW CATEGORIES (For unmatched transactions):
+         - If no existing category fits, SUGGEST a new category name
+         - Use clear, descriptive Indian-context names like:
+           * "UPI Transfers" for personal UPI payments
+           * "Paytm Payments" for PayTM merchant payments
+           * "PhonePe" for PhonePe payments
+           * "Google Pay" for GPay payments
+           * "ATM Withdrawal" for ATM transactions
+           * "NEFT/IMPS" for bank transfers
+           * "Rent" for rent payments
+           * "Salary" for salary credits
+           * "Interest Earned" for bank interest
+           * "EMI Payments" for loan EMIs
+         - Prefix suggested categories with "NEW:" (e.g., "NEW:Paytm Payments")
+         - Keep names short (2-3 words max)
+         - Use Title Case
+
+      3. UNKNOWN TRANSACTIONS:
+         - Only return "null" if the transaction is truly unidentifiable
+         - Examples: encrypted references, blank descriptions
+         - DO NOT return null for recognizable patterns like UPI, PayTM, PhonePe
+
+      INDIAN TRANSACTION PATTERNS TO RECOGNIZE:
+      - UPI: "UPIOUT", "UPIIN", "@oksbi", "@okaxis", "@okhdfcbank", "@ybl", "@paytm"
+      - PayTM: "paytmqr", "@ptys", "paytm"
+      - PhonePe: "phonepe", "@ybl"
+      - Google Pay: "gpay", "@okicici", "gpay@"
+      - NEFT/IMPS: "NEFT", "IMPS", "RTGS"
+      - ATM: "ATM", "CASH WDL"
+      - Salary: "SALARY", "SAL CR", "NEFT-SALARY"
+      - EMI: "EMI", "LOAN"
+
+      OUTPUT FORMAT:
+      - For existing category: just the category name (e.g., "Swiggy/Zomato")
+      - For new category: prefix with "NEW:" (e.g., "NEW:UPI Transfers")
+      - For unknown: "null"
     INSTRUCTIONS
   end
 
@@ -92,25 +120,24 @@ class Provider::Gemini::AutoCategorizer
   end
 
   def json_schema
-    # NOTE: Removed enum constraints for transaction_id and category_name
-    # because Gemini 3 Flash Preview returns 400 when enums are too large (177+ items)
-    # The prompt already instructs the model on valid category names
+    # NOTE: No enum constraints - AI can return existing category OR suggest new ones
+    # New categories are prefixed with "NEW:" (e.g., "NEW:Paytm Payments")
     {
       type: "object",
       properties: {
         categorizations: {
           type: "array",
-          description: "An array of auto-categorizations for each transaction",
+          description: "An array of categorizations for each transaction",
           items: {
             type: "object",
             properties: {
               transaction_id: {
                 type: "string",
-                description: "The internal UUID of the original transaction"
+                description: "The UUID of the transaction"
               },
               category_name: {
                 type: "string",
-                description: "The matched category name of the transaction, or 'null' if no match"
+                description: "Existing category name, OR 'NEW:CategoryName' for suggestions, OR 'null' if unknown"
               }
             },
             required: ["transaction_id", "category_name"]
