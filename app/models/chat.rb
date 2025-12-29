@@ -26,9 +26,9 @@ class Chat < ApplicationRecord
     end
 
     # Returns the default AI model to use for chats
-    # Priority: ENV variable > Setting > Gemini default
+    # Priority: ENV variable > Setting > Engine default
     def default_model
-      ENV["GOOGLE_AI_MODEL"].presence || Setting.google_ai_model.presence || Provider::Gemini::DEFAULT_MODEL
+      ENV["GOOGLE_AI_MODEL"].presence || Setting.google_ai_model.presence || Provider::Engine::DEFAULT_MODEL
     end
   end
 

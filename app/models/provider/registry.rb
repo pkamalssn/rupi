@@ -78,14 +78,23 @@ class Provider::Registry
         Provider::Openai.new(access_token, uri_base: uri_base, model: model)
       end
 
-      def gemini
-        api_key = ENV["GOOGLE_AI_API_KEY"].presence || Setting.google_ai_api_key
-
-        return nil unless api_key.present?
-
+      # RUPI Engine provider - proxies to rupi-engine for all Gemini AI
+      # Requires RUPI_ENGINE_URL and RUPI_ENGINE_API_KEY
+      def engine
+        engine_url = ENV["RUPI_ENGINE_URL"]
+        
+        # Engine provider is always available (will fail at runtime if not configured)
+        # This allows the chat UI to work and show meaningful errors
         model = ENV["GOOGLE_AI_MODEL"].presence || Setting.google_ai_model
-
-        Provider::Gemini.new(api_key, model: model)
+        
+        Provider::Engine.new(model: model)
+      end
+      
+      # DEPRECATED: Local Gemini provider (moved to rupi-engine)
+      # Kept for backwards compatibility but returns nil
+      def gemini
+        Rails.logger.warn("Provider::Gemini is deprecated. Use Provider::Engine instead.")
+        nil
       end
 
       def yahoo_finance
@@ -120,9 +129,9 @@ class Provider::Registry
       when :securities
         %i[twelve_data yahoo_finance]
       when :llm
-        %i[gemini]
+        %i[engine]
       else
-        %i[plaid_us plaid_eu github gemini]
+        %i[plaid_us plaid_eu github engine]
       end
     end
 end
