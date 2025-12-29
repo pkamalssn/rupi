@@ -1,7 +1,14 @@
+# frozen_string_literal: true
+
+# Family::AutoCategorizer - AI-powered transaction categorization
+#
+# This calls the RupiEngine API for categorization (sidecar architecture).
+# The engine contains the proprietary Gemini integration.
+#
 class Family::AutoCategorizer
   Error = Class.new(StandardError)
   
-  # Maximum transactions per LLM request (gemini-3-flash-preview with 1M context easily handles 200+)
+  # Maximum transactions per API request (engine handles batching internally)
   BATCH_SIZE = 200
   
   def initialize(family, transaction_ids: [])
@@ -10,8 +17,6 @@ class Family::AutoCategorizer
   end
 
   def auto_categorize
-    raise Error, "No LLM provider for auto-categorization" unless llm_provider
-
     if scope.none?
       Rails.logger.info("No transactions to auto-categorize for family #{family.id}")
       return 0
@@ -27,9 +32,8 @@ class Family::AutoCategorizer
     end
 
     # =====================================================
-    # BATCHING: Process transactions in groups of 25
-    # This avoids the LLM token limit while ensuring ALL
-    # transactions get categorized
+    # BATCHING: Process transactions in groups
+    # Each batch is sent to RupiEngine API
     # =====================================================
     total_modified = 0
     all_transactions = scope.to_a
@@ -47,21 +51,32 @@ class Family::AutoCategorizer
         }
       end
       
-      result = llm_provider.auto_categorize(
+      # =====================================================
+      # SIDECAR: Call RupiEngine API for categorization
+      # Proprietary Gemini logic lives in engine
+      # =====================================================
+      result = RupiEngine::Client.categorize_transactions(
         transactions: batch_input,
-        user_categories: categories_input,
-        family: family
+        categories: categories_input
       )
 
-
       unless result.success?
-        Rails.logger.error("Failed to auto-categorize batch #{batch_index + 1} for family #{family.id}: #{result.error.message}")
-        next  # Continue with next batch instead of failing entirely
+        Rails.logger.error("Failed to auto-categorize batch #{batch_index + 1} for family #{family.id}: #{result.error_message}")
+        
+        # If connection error, raise so GoodJob can retry
+        if result.error_type == "connection_error" || result.error_type == "timeout"
+          raise Error, "RupiEngine unavailable: #{result.error_message}"
+        end
+        
+        next  # Continue with next batch for non-retryable errors
       end
 
+      # Process categorizations from API response
+      categorizations = result.data&.dig("categorizations") || []
+      
       batch.each do |transaction|
-        auto_categorization = result.data.find { |c| c.transaction_id == transaction.id }
-        category_name = auto_categorization&.category_name
+        auto_categorization = categorizations.find { |c| c["transaction_id"] == transaction.id }
+        category_name = auto_categorization&.dig("category_name")
         
         next if category_name.blank? || category_name == "null"
         
@@ -106,11 +121,6 @@ class Family::AutoCategorizer
 
   private
     attr_reader :family, :transaction_ids
-
-    # Use Gemini as the primary LLM provider for auto-categorization
-    def llm_provider
-      Provider::Registry.get_provider(:gemini)
-    end
 
     def user_categories_input
       family.categories.map do |category|
@@ -182,4 +192,3 @@ class Family::AutoCategorizer
       colors.sample
     end
 end
-

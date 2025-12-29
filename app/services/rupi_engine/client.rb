@@ -161,6 +161,192 @@ module RupiEngine
         false
       end
 
+      # =================================================================
+      # AI ENDPOINTS - Calls to rupi-engine's proprietary AI services
+      # =================================================================
+      
+      # Categorize transactions using AI (with NEW: category suggestions)
+      #
+      # @param transactions [Array<Hash>] Array of {id:, description:, amount:, classification:}
+      # @param categories [Array<Hash>] Array of {id:, name:, classification:}
+      # @return [Response] Response with categorizations array
+      #
+      def categorize_transactions(transactions:, categories:)
+        request_id = generate_request_id
+        
+        Rails.logger.tagged("RupiEngine", request_id) do
+          Rails.logger.info("Categorizing #{transactions.size} transactions")
+          
+          begin
+            response = post(
+              "/api/v1/ai/categorize",
+              body: {
+                transactions: transactions,
+                categories: categories
+              }.to_json,
+              headers: request_headers(request_id).merge("Content-Type" => "application/json")
+            )
+            
+            handle_response(response, request_id)
+            
+          rescue Net::OpenTimeout, Net::ReadTimeout => e
+            Rails.logger.error("Timeout during AI categorization: #{e.message}")
+            Response.new(
+              success: false,
+              error_type: "timeout",
+              error_message: "AI categorization is taking too long. Please try again.",
+              request_id: request_id
+            )
+            
+          rescue Errno::ECONNREFUSED, SocketError => e
+            Rails.logger.error("Connection refused during AI categorization: #{e.message}")
+            Response.new(
+              success: false,
+              error_type: "connection_error",
+              error_message: "Unable to connect to AI service. Please try again later.",
+              request_id: request_id
+            )
+          end
+        end
+      end
+      
+      # Parse loan document using AI
+      #
+      # @param file [ActionDispatch::Http::UploadedFile, Tempfile] The loan document PDF
+      # @return [Response] Response with loan_data hash
+      #
+      def parse_loan_document(file)
+        request_id = generate_request_id
+        
+        Rails.logger.tagged("RupiEngine", request_id) do
+          Rails.logger.info("Parsing loan document with AI")
+          
+          begin
+            file_to_upload = prepare_file(file)
+            
+            response = post(
+              "/api/v1/ai/parse_loan_document",
+              body: { file: file_to_upload },
+              headers: request_headers(request_id)
+            )
+            
+            handle_response(response, request_id)
+            
+          rescue Net::OpenTimeout, Net::ReadTimeout => e
+            Rails.logger.error("Timeout during loan document parsing: #{e.message}")
+            Response.new(
+              success: false,
+              error_type: "timeout",
+              error_message: "Loan document parsing is taking too long. Please try again.",
+              request_id: request_id
+            )
+            
+          rescue Errno::ECONNREFUSED, SocketError => e
+            Rails.logger.error("Connection refused during loan parsing: #{e.message}")
+            Response.new(
+              success: false,
+              error_type: "connection_error",
+              error_message: "Unable to connect to AI service. Please try again later.",
+              request_id: request_id
+            )
+          end
+        end
+      end
+      
+      # AI chat for financial queries
+      #
+      # @param message [String] User's message
+      # @param context [String] Optional context about user's finances
+      # @param instructions [String] Optional custom instructions
+      # @param chat_history [Array<Hash>] Previous messages [{role:, content:}]
+      # @return [Response] Response with AI's reply
+      #
+      def chat(message:, context: nil, instructions: nil, chat_history: [])
+        request_id = generate_request_id
+        
+        Rails.logger.tagged("RupiEngine", request_id) do
+          Rails.logger.info("AI chat request")
+          
+          begin
+            response = post(
+              "/api/v1/ai/chat",
+              body: {
+                message: message,
+                context: context,
+                instructions: instructions,
+                chat_history: chat_history
+              }.to_json,
+              headers: request_headers(request_id).merge("Content-Type" => "application/json")
+            )
+            
+            handle_response(response, request_id)
+            
+          rescue Net::OpenTimeout, Net::ReadTimeout => e
+            Rails.logger.error("Timeout during AI chat: #{e.message}")
+            Response.new(
+              success: false,
+              error_type: "timeout",
+              error_message: "AI is taking too long to respond. Please try again.",
+              request_id: request_id
+            )
+            
+          rescue Errno::ECONNREFUSED, SocketError => e
+            Rails.logger.error("Connection refused during AI chat: #{e.message}")
+            Response.new(
+              success: false,
+              error_type: "connection_error",
+              error_message: "Unable to connect to AI service. Please try again later.",
+              request_id: request_id
+            )
+          end
+        end
+      end
+      
+      # Detect merchants from transaction descriptions using AI
+      #
+      # @param transactions [Array<Hash>] Array of {id:, description:}
+      # @param merchants [Array<Hash>] Known merchants [{name:}]
+      # @return [Response] Response with merchant mappings
+      #
+      def detect_merchants(transactions:, merchants: [])
+        request_id = generate_request_id
+        
+        Rails.logger.tagged("RupiEngine", request_id) do
+          Rails.logger.info("Detecting merchants for #{transactions.size} transactions")
+          
+          begin
+            response = post(
+              "/api/v1/ai/detect_merchants",
+              body: {
+                transactions: transactions,
+                merchants: merchants
+              }.to_json,
+              headers: request_headers(request_id).merge("Content-Type" => "application/json")
+            )
+            
+            handle_response(response, request_id)
+            
+          rescue Net::OpenTimeout, Net::ReadTimeout => e
+            Rails.logger.error("Timeout during merchant detection: #{e.message}")
+            Response.new(
+              success: false,
+              error_type: "timeout",
+              error_message: "Merchant detection is taking too long. Please try again.",
+              request_id: request_id
+            )
+            
+          rescue Errno::ECONNREFUSED, SocketError => e
+            Rails.logger.error("Connection refused during merchant detection: #{e.message}")
+            Response.new(
+              success: false,
+              error_type: "connection_error",
+              error_message: "Unable to connect to AI service. Please try again later.",
+              request_id: request_id
+            )
+          end
+        end
+      end
+
       private
 
       def api_key

@@ -22,44 +22,55 @@ class LoanDocumentImport < ApplicationRecord
   validates :loan_type, inclusion: { in: LOAN_TYPES }, allow_blank: true
 
   # Process all uploaded documents with AI and merge results
+  # Uses RupiEngine API for proprietary AI parsing
   def process_document!
     return if documents.blank?
     
     update!(status: :processing)
     
     begin
-      provider = Provider::Registry.get_provider(:gemini)
-      
-      unless provider
-        update!(status: :failed, error: "Gemini AI provider not configured")
-        return
-      end
-
-      # Process each document and collect results
+      # Process each document via RupiEngine API
       all_extracted = []
       all_transactions = []
       
       documents.each do |doc|
-        result = provider.parse_loan_document(
-          file: doc,
-          family: family
-        )
-
-        if result.success?
-          extracted = result.data
-          all_extracted << extracted
+        # Download file for API upload
+        temp_file = Tempfile.new(["loan_doc", File.extname(doc.filename.to_s)])
+        temp_file.binmode
+        temp_file.write(doc.download)
+        temp_file.rewind
+        
+        begin
+          # SIDECAR: Call RupiEngine API for loan document parsing
+          result = RupiEngine::Client.parse_loan_document(temp_file)
           
-          # Collect transactions from each document
-          if extracted[:transactions].present?
-            all_transactions.concat(extracted[:transactions])
+          if result.success?
+            # API returns loan_data key
+            extracted = result.data&.dig("loan_data") || result.data
+            
+            # Convert string keys to symbols
+            extracted = extracted.transform_keys(&:to_sym) if extracted.is_a?(Hash)
+            
+            all_extracted << extracted
+            
+            # Collect transactions from each document
+            if extracted[:transactions].present?
+              transactions = extracted[:transactions].map do |t|
+                t.is_a?(Hash) ? t.transform_keys(&:to_sym) : t
+              end
+              all_transactions.concat(transactions)
+            end
+          else
+            Rails.logger.warn("Failed to parse document #{doc.filename}: #{result.error_message}")
           end
-        else
-          Rails.logger.warn("Failed to parse document #{doc.filename}: #{result.error&.message}")
+        ensure
+          temp_file.close
+          temp_file.unlink
         end
       end
 
       if all_extracted.empty?
-        update!(status: :failed, error: "Failed to parse any documents")
+        update!(status: :failed, error: "Failed to parse any documents. Please ensure RupiEngine is running.")
         return
       end
 
