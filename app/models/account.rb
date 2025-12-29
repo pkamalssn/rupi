@@ -76,8 +76,12 @@ class Account < ApplicationRecord
   class << self
     def create_and_sync(attributes)
       attributes[:accountable_attributes] ||= {} # Ensure accountable is created, even if empty
-      account = new(attributes.merge(cash_balance: attributes[:balance]))
+      
+      # Extract initial_balance BEFORE passing to model (it's not a real column)
       initial_balance = attributes.dig(:accountable_attributes, :initial_balance)&.to_d
+      attributes[:accountable_attributes] = attributes[:accountable_attributes].except(:initial_balance)
+      
+      account = new(attributes.merge(cash_balance: attributes[:balance]))
 
       transaction do
         account.save!
