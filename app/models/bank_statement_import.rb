@@ -147,10 +147,15 @@ class BankStatementImport < Import
   def extract_metadata(parsed_data)
     return {} unless parsed_data.is_a?(Hash)
     
-    metadata = parsed_data[:metadata] || {}
-    metadata[:opening_balance] ||= parsed_data[:opening_balance]
-    metadata[:closing_balance] ||= parsed_data[:closing_balance]
-    metadata[:account_type] ||= parsed_data[:account_type]
+    metadata = parsed_data[:metadata] || parsed_data["metadata"] || {}
+    
+    # Handle both symbol and string keys
+    metadata[:opening_balance] ||= parsed_data[:opening_balance] || parsed_data["opening_balance"]
+    metadata[:closing_balance] ||= parsed_data[:closing_balance] || parsed_data["closing_balance"]
+    metadata[:account_type] ||= parsed_data[:account_type] || parsed_data["account_type"]
+    
+    Rails.logger.info("[BankStatementImport] Extracted metadata: opening=#{metadata[:opening_balance]}, closing=#{metadata[:closing_balance]}")
+    
     metadata
   end
 
@@ -535,10 +540,20 @@ class BankStatementImport < Import
       if response.success?
         Rails.logger.info("[RupiEngine] Successfully parsed #{response.transaction_count} transactions for #{bank_name}")
         
+        # Extract metadata - balance info is at top level of response
+        engine_metadata = response.data&.dig("metadata") || {}
+        engine_metadata[:opening_balance] ||= response.data&.dig("opening_balance")
+        engine_metadata[:closing_balance] ||= response.data&.dig("closing_balance")
+        engine_metadata[:account_type] ||= response.data&.dig("account_type")
+        
+        Rails.logger.info("[RupiEngine] Metadata: opening=#{engine_metadata[:opening_balance]}, closing=#{engine_metadata[:closing_balance]}")
+        
         # Bundle transactions with metadata from engine
         {
           transactions: response.transactions.map { |t| normalize_engine_transaction(t) },
-          metadata: response.data&.dig("metadata") || {}
+          metadata: engine_metadata,
+          opening_balance: engine_metadata[:opening_balance],
+          closing_balance: engine_metadata[:closing_balance]
         }
       else
         # Handle specific error types
