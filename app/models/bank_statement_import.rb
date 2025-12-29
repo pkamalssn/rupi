@@ -414,9 +414,17 @@ class BankStatementImport < Import
     # Determine account type based on statement type
     account_name = "#{bank_name.gsub('_', ' ')} Import"
     
-    # Get closing balance from parsed metadata (or 0 if not available)
+    # Get opening balance from parsed metadata (for proper balance tracking)
     # Note: @parsed_metadata is set by extract_metadata() called before this
-    initial_balance = @parsed_metadata&.dig(:closing_balance).to_f || 0
+    # We use OPENING balance here because the account should start with this
+    # and transactions will be added on top of it
+    opening_balance = @parsed_metadata&.dig(:opening_balance).to_f
+    closing_balance = @parsed_metadata&.dig(:closing_balance).to_f
+    
+    # Use opening balance if available, otherwise use closing balance
+    initial_balance = opening_balance.nonzero? || closing_balance
+    
+    Rails.logger.info("[BankStatementImport] Creating account '#{account_name}' with opening balance: #{opening_balance}, closing balance: #{closing_balance}")
     
     if credit_card_statement?
       # Credit cards are liabilities
@@ -424,11 +432,13 @@ class BankStatementImport < Import
                                 .find_by("accounts.name ILIKE ?", "%#{bank_name.split('_').first}%")
       return existing if existing
 
-      family.accounts.create!(
+      Account.create_and_sync(
+        family: family,
         name: account_name,
-        balance: initial_balance,
+        balance: initial_balance || 0,
         currency: family.currency,
-        accountable: CreditCard.new
+        accountable_type: "CreditCard",
+        accountable_attributes: { initial_balance: initial_balance }
       )
     elsif investment_statement?
       # Investment accounts
@@ -436,11 +446,13 @@ class BankStatementImport < Import
                                 .find_by("accounts.name ILIKE ?", "%#{bank_name}%")
       return existing if existing
 
-      family.accounts.create!(
+      Account.create_and_sync(
+        family: family,
         name: account_name,
-        balance: initial_balance,
+        balance: initial_balance || 0,
         currency: family.currency,
-        accountable: Investment.new
+        accountable_type: "Investment",
+        accountable_attributes: { initial_balance: initial_balance }
       )
     else
       # Bank accounts are depositories
@@ -457,11 +469,16 @@ class BankStatementImport < Import
       # - Can be overridden by metadata from parser
       subtype = detect_account_subtype
       
-      family.accounts.create!(
+      Account.create_and_sync(
+        family: family,
         name: account_name,
-        balance: initial_balance,
+        balance: initial_balance || 0,
         currency: account_currency,
-        accountable: Depository.new(subtype: subtype)
+        accountable_type: "Depository",
+        accountable_attributes: { 
+          subtype: subtype,
+          initial_balance: initial_balance 
+        }
       )
     end
   end
