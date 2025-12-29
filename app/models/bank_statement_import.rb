@@ -530,7 +530,11 @@ class BankStatementImport < Import
     file_to_parse = download_statement_file
     
     begin
-      # Call the proprietary parsing engine
+      # =====================================================
+      # SIDECAR ARCHITECTURE: Engine is REQUIRED
+      # Proprietary parsing lives in rupi-engine (port 4000)
+      # If engine is down, parsing fails (intentional)
+      # =====================================================
       response = RupiEngine::Client.parse_statement(
         file_to_parse, 
         bank_name: bank_name, 
@@ -561,18 +565,16 @@ class BankStatementImport < Import
         when "password_required"
           raise BankStatementParser::PasswordRequiredError, response.error_message
         when "connection_error", "timeout"
-          # Engine unavailable - fall back to local parsing (temporary)
-          Rails.logger.warn("[RupiEngine] Engine unavailable (#{response.error_type}), falling back to local parser")
-          parse_statement_locally
+          raise BankStatementParser::ParseError, "RUPI Engine unavailable. Please ensure the parsing service is running."
         else
           raise BankStatementParser::ParseError, response.error_message || "Failed to parse statement"
         end
       end
       
     rescue Errno::ECONNREFUSED, SocketError, Net::OpenTimeout, Net::ReadTimeout => e
-      # Engine not running - fall back to local parsing (for development)
-      Rails.logger.warn("[RupiEngine] Connection failed (#{e.class}), falling back to local parser")
-      parse_statement_locally
+      # Engine not running - this is now a FAILURE (no fallback)
+      Rails.logger.error("[RupiEngine] Connection failed: #{e.class} - #{e.message}")
+      raise BankStatementParser::ParseError, "RUPI Engine is not available. Please contact support or try again later."
     ensure
       # Clean up temp file
       file_to_parse.close if file_to_parse.respond_to?(:close)
@@ -607,68 +609,11 @@ class BankStatementImport < Import
     end
   end
   
-  # FALLBACK: Local parsing (to be removed once engine is stable)
-  # TODO: Remove this once RupiEngine is deployed and stable
-  def parse_statement_locally
-    Rails.logger.info("[LocalParser] Using local parser for #{bank_name}")
-    parser = parser_class.new(statement_file, password: effective_password)
-    transactions = parser.parse
-    
-    {
-      transactions: transactions,
-      metadata: parser.respond_to?(:metadata) ? parser.metadata : {}
-    }
-  end
-
-  def parser_class
-    case bank_name
-    # Banks
-    when "HDFC"
-      BankStatementParser::Hdfc
-    when "ICICI"
-      BankStatementParser::Icici
-    when "SBI"
-      BankStatementParser::Sbi
-    when "UBI"
-      BankStatementParser::Ubi
-    when "Axis"
-      BankStatementParser::Axis
-    when "Kotak"
-      BankStatementParser::Kotak
-    when "RBL"
-      BankStatementParser::Rbl
-    when "Bandhan"
-      BankStatementParser::Bandhan
-    when "Jupiter"
-      BankStatementParser::Jupiter
-    when "Equitas"
-      BankStatementParser::Equitas
-    when "KVB"
-      BankStatementParser::Kvb
-    when "Wise"
-      BankStatementParser::Wise
-    # Credit Cards
-    when "HDFC_CC"
-      BankStatementParser::HdfcCreditCard
-    when "ICICI_Amazon"
-      BankStatementParser::IciciAmazonPay
-    when "Scapia"
-      BankStatementParser::Scapia
-    when "Kotak_Royale"
-      BankStatementParser::KotakRoyale
-    # Investments
-    when "Zerodha"
-      BankStatementParser::ZerodhaTradebook
-    when "MFCentral"
-      BankStatementParser::MfCentralCas
-    when "NPS"
-      BankStatementParser::NpsStatement
-    when "PPF"
-      BankStatementParser::Generic  # PPF is typically manual entry
-    else
-      BankStatementParser::Generic
-    end
-  end
+  # =====================================================
+  # NOTE: Local parsers have been REMOVED
+  # All parsing now goes through RupiEngine API
+  # The old BankStatementParser files can be deleted
+  # =====================================================
 
   def find_category(description)
     return nil if description.blank?
