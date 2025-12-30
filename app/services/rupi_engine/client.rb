@@ -19,7 +19,7 @@ module RupiEngine
 
     # Configuration
     base_uri ENV.fetch("RUPI_ENGINE_URL", "http://localhost:4000")
-    default_timeout 60  # PDF parsing can take time
+    default_timeout 180  # AI categorization of 177+ transactions can take 2+ minutes
 
     # Custom error classes
     class Error < StandardError; end
