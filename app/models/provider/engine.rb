@@ -131,7 +131,152 @@ class Provider::Engine < Provider
     streamer:,
     chat_history:
   )
-    # Use HTTParty streaming for SSE
+    # Check feature flag for streaming vs non-streaming
+    if RupiEngineConfig.stream_chat?
+      begin
+        stream_chat_via_sse(
+          prompt: prompt,
+          model: model,
+          instructions: instructions,
+          functions: functions,
+          function_results: function_results,
+          streamer: streamer,
+          chat_history: chat_history
+        )
+      rescue => e
+        Rails.logger.warn("[Provider::Engine] SSE streaming failed, falling back to non-stream: #{e.message}")
+        non_stream_chat_response(
+          prompt: prompt,
+          model: model,
+          instructions: instructions,
+          functions: functions,
+          function_results: function_results,
+          streamer: streamer,
+          chat_history: chat_history
+        )
+      end
+    else
+      non_stream_chat_response(
+        prompt: prompt,
+        model: model,
+        instructions: instructions,
+        functions: functions,
+        function_results: function_results,
+        streamer: streamer,
+        chat_history: chat_history
+      )
+    end
+  end
+  
+  # Non-streaming fallback - calls /api/v1/ai/chat and emits single response
+  def non_stream_chat_response(
+    prompt:,
+    model:,
+    instructions:,
+    functions:,
+    function_results:,
+    streamer:,
+    chat_history:
+  )
+    url = "#{engine_base_url}/api/v1/ai/chat"
+    
+    body = build_request_body(
+      message: prompt,
+      instructions: instructions,
+      functions: functions,
+      function_results: function_results,
+      chat_history: chat_history
+    )
+    
+    response = HTTParty.post(
+      url,
+      body: body.to_json,
+      headers: request_headers.merge("Content-Type" => "application/json"),
+      timeout: 120
+    )
+    
+    unless response.success?
+      error_body = response.parsed_response rescue {}
+      raise Error, error_body["message"] || "Non-streaming chat failed"
+    end
+    
+    data = response.parsed_response
+    
+    # Emit the response to the streamer
+    case data["type"]
+    when "tool_call"
+      tool_calls = data["tool_calls"] || []
+      function_requests = tool_calls.map do |tc|
+        ChatFunctionRequest.new(
+          id: tc["id"],
+          call_id: tc["id"],
+          function_name: tc["name"],
+          function_args: tc["arguments"].to_json
+        )
+      end
+      
+      chunk = ChatStreamChunk.new(
+        type: "response",
+        data: ChatResponse.new(
+          id: data["request_id"] || "engine-#{Time.now.to_i}",
+          model: "gemini",
+          messages: [],
+          function_requests: function_requests
+        ),
+        usage: data["usage"]
+      )
+      streamer.call(chunk)
+      
+      build_chat_response("", function_requests, data["usage"])
+      
+    when "message"
+      text = data["content"] || ""
+      
+      # Emit as output_text for UI streaming
+      if text.present?
+        text_chunk = ChatStreamChunk.new(
+          type: "output_text",
+          data: text,
+          usage: nil
+        )
+        streamer.call(text_chunk)
+      end
+      
+      # Build final response
+      message = text.present? ? ChatMessage.new(
+        id: "engine-#{Time.now.to_i}",
+        output_text: text
+      ) : nil
+      
+      final_chunk = ChatStreamChunk.new(
+        type: "response",
+        data: ChatResponse.new(
+          id: data["request_id"] || "engine-#{Time.now.to_i}",
+          model: "gemini",
+          messages: message ? [message] : [],
+          function_requests: []
+        ),
+        usage: data["usage"]
+      )
+      streamer.call(final_chunk)
+      
+      build_chat_response(text, [], data["usage"])
+      
+    else
+      raise Error, "Unknown response type: #{data['type']}"
+    end
+  end
+  
+  # SSE streaming implementation
+  def stream_chat_via_sse(
+    prompt:,
+    model:,
+    instructions:,
+    functions:,
+    function_results:,
+    streamer:,
+    chat_history:
+  )
     url = "#{engine_base_url}/api/v1/ai/chat/stream"
     
     body = build_request_body(
