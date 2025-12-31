@@ -47,11 +47,11 @@ class Assistant::Function
     attr_reader :user
 
     def build_schema(properties: {}, required: [])
+      # Note: additionalProperties is not supported by Gemini API, so we omit it
       {
         type: "object",
         properties: properties,
-        required: required,
-        additionalProperties: false
+        required: required
       }
     end
 

@@ -142,7 +142,7 @@ class Provider::Engine < Provider
       chat_history: chat_history
     )
     
-    collected_text = ""
+    collected_text = String.new("")
     function_requests = []
     final_usage = nil
     
@@ -165,7 +165,7 @@ class Provider::Engine < Provider
         raise Error, "Engine streaming failed: #{error_body}"
       end
       
-      buffer = ""
+      buffer = String.new("")
       
       response.read_body do |chunk|
         buffer += chunk
@@ -212,7 +212,8 @@ class Provider::Engine < Provider
           # Emit to streamer
           chunk = ChatStreamChunk.new(
             type: "output_text",
-            data: text
+            data: text,
+            usage: nil
           )
           streamer.call(chunk)
         end
@@ -236,7 +237,8 @@ class Provider::Engine < Provider
             model: "gemini",
             messages: [],
             function_requests: function_requests
-          )
+          ),
+          usage: nil
         )
         streamer.call(chunk)
         
