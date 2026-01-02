@@ -242,18 +242,13 @@ class Provider::Engine < Provider
         streamer.call(text_chunk)
       end
       
-      # Build final response
-      message = text.present? ? ChatMessage.new(
-        id: "engine-#{Time.now.to_i}",
-        output_text: text
-      ) : nil
-      
+      # Build final response - do NOT include text in messages since it was already emitted
       final_chunk = ChatStreamChunk.new(
         type: "response",
         data: ChatResponse.new(
           id: data["request_id"] || "engine-#{Time.now.to_i}",
           model: "gemini",
-          messages: message ? [message] : [],
+          messages: [],  # Text was already emitted via output_text
           function_requests: []
         ),
         usage: data["usage"]
@@ -390,18 +385,15 @@ class Provider::Engine < Provider
       when "done"
         final_usage = data["usage"]
         
-        # Emit final response
-        message = collected_text.present? ? ChatMessage.new(
-          id: "engine-#{Time.now.to_i}",
-          output_text: collected_text
-        ) : nil
-        
+        # Emit final response - do NOT include already-streamed text in messages
+        # The text was already emitted via delta events, so messages should be empty
+        # Only include function_requests if present
         chunk = ChatStreamChunk.new(
           type: "response",
           data: ChatResponse.new(
             id: "engine-#{Time.now.to_i}",
             model: "gemini",
-            messages: message ? [message] : [],
+            messages: [],  # Text was already streamed via delta events
             function_requests: function_requests
           ),
           usage: final_usage
