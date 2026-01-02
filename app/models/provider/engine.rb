@@ -242,7 +242,7 @@ class Provider::Engine < Provider
         streamer.call(text_chunk)
       end
       
-      # Build final response with text for follow-up handling
+      # Build final response
       message = text.present? ? ChatMessage.new(
         id: "engine-#{Time.now.to_i}",
         output_text: text
@@ -390,8 +390,7 @@ class Provider::Engine < Provider
       when "done"
         final_usage = data["usage"]
         
-        # Emit final response with collected text for follow-up responses
-        # The responder will handle deduplication
+        # Emit final response
         message = collected_text.present? ? ChatMessage.new(
           id: "engine-#{Time.now.to_i}",
           output_text: collected_text

@@ -38,11 +38,8 @@ class Assistant
     )
 
     latest_response_id = chat.latest_assistant_response_id
-    text_was_streamed = false  # Track if text was streamed via output_text
 
     responder.on(:output_text) do |text|
-      text_was_streamed = true
-      
       if assistant_message.content.blank?
         stop_thinking
 
@@ -58,7 +55,8 @@ class Assistant
     responder.on(:response) do |data|
       update_thinking("Analyzing your data...")
 
-      # Save the assistant message if it hasn't been saved yet
+      # Save the assistant message if it hasn't been saved yet (content is blank)
+      # This can happen when the LLM returns everything in one response chunk
       if assistant_message.new_record?
         # Extract text from messages if available, but only if we don't already have content
         if data[:messages].present? && assistant_message.content.blank?
@@ -67,25 +65,23 @@ class Assistant
         end
         # Always save if new_record, even if content is blank (function calls only)
         assistant_message.save!
-        chat.update_latest_response!(data[:id]) if data[:id].present?
-      elsif data[:messages].present? && !text_was_streamed
-        # Only append from messages if we didn't already stream the text
-        # This handles non-streaming fallback or follow-up responses
+        chat.update_latest_response!(data[:id])
+      elsif data[:messages].present?
+        # Message was saved (streaming), append the final chunk of text
         text = data[:messages].map { |msg| msg.output_text }.compact.join(" ")
-        if text.present? && !assistant_message.content.to_s.include?(text[0..50])
+        if text.present?
           assistant_message.append_text!(text)
         end
-        chat.update_latest_response!(data[:id]) if data[:id].present?
+        chat.update_latest_response!(data[:id])
       else
-        # Text was already streamed, just update response ID
-        chat.update_latest_response!(data[:id]) if data[:id].present?
+        # Content already exists from streaming and no new text in response
+        chat.update_latest_response!(data[:id])
       end
 
       if data[:function_tool_calls].present?
         assistant_message.tool_calls = data[:function_tool_calls]
         latest_response_id = data[:id]
-        text_was_streamed = false  # Reset for follow-up response
-      elsif data[:id].present?
+      else
         chat.update_latest_response!(data[:id])
       end
     end
