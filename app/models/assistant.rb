@@ -65,17 +65,11 @@ class Assistant
         end
         # Always save if new_record, even if content is blank (function calls only)
         assistant_message.save!
-        chat.update_latest_response!(data[:id])
-      elsif data[:messages].present?
-        # Message was saved (streaming), append the final chunk of text
-        text = data[:messages].map { |msg| msg.output_text }.compact.join(" ")
-        if text.present?
-          assistant_message.append_text!(text)
-        end
-        chat.update_latest_response!(data[:id])
+        chat.update_latest_response!(data[:id]) if data[:id].present?
       else
-        # Content already exists from streaming and no new text in response
-        chat.update_latest_response!(data[:id])
+        # Message already exists (from streaming) - just update response ID
+        # Do NOT append messages text again - it was already streamed via output_text
+        chat.update_latest_response!(data[:id]) if data[:id].present?
       end
 
       if data[:function_tool_calls].present?
