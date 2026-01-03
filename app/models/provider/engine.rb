@@ -321,16 +321,21 @@ class Provider::Engine < Provider
       response.read_body do |chunk|
         buffer += chunk
         
+        Rails.logger.debug("[Provider::Engine] SSE chunk received, buffer size: #{buffer.size}")
+        
         # Process complete SSE events
         while buffer.include?("\n\n")
           event_end = buffer.index("\n\n")
           event_data = buffer[0...event_end]
           buffer = buffer[(event_end + 2)..]
           
+          Rails.logger.debug("[Provider::Engine] Processing SSE event: #{event_data[0..100]}")
           process_sse_event(event_data, streamer, collected_text, function_requests, final_usage)
         end
       end
     end
+    
+    Rails.logger.info("[Provider::Engine] SSE complete. Collected text length: #{collected_text.length}")
     
     # Build final response
     build_chat_response(collected_text, function_requests, final_usage)
@@ -435,8 +440,14 @@ class Provider::Engine < Provider
     }
     
     body[:instructions] = instructions if instructions.present?
-    body[:available_tools] = build_tool_definitions(functions) if functions.any?
-    body[:tool_results] = normalize_function_results(function_results) if function_results.any?
+    
+    # Only include tools if NOT sending tool_results (prevents nested tool calls)
+    if function_results.any?
+      body[:tool_results] = normalize_function_results(function_results)
+      # Don't include available_tools - we want the AI to respond with text, not make more tool calls
+    else
+      body[:available_tools] = build_tool_definitions(functions) if functions.any?
+    end
     
     body
   end
