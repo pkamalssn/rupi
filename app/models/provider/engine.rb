@@ -381,7 +381,8 @@ class Provider::Engine < Provider
             id: tc["id"],
             call_id: tc["id"],
             function_name: tc["name"],
-            function_args: tc["arguments"].to_json
+            function_args: tc["arguments"].to_json,
+            thought_signature: tc["thought_signature"]
           )
         end
         
@@ -473,12 +474,15 @@ class Provider::Engine < Provider
   
   def normalize_function_results(function_results)
     function_results.map do |result|
-      {
+      normalized = {
         call_id: result[:call_id],
         name: result[:name],
         arguments: result[:arguments],
         output: result[:output]
       }
+      # Include thought_signature for Gemini 3 reasoning context
+      normalized[:thought_signature] = result[:thought_signature] if result[:thought_signature].present?
+      normalized
     end
   end
   

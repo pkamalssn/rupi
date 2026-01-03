@@ -2,26 +2,35 @@ class ToolCall::Function < ToolCall
   validates :function_name, :function_result, presence: true
   validates :function_arguments, presence: true, allow_blank: true
 
+  # Virtual attribute for Gemini 3 thought signature (not persisted)
+  attr_accessor :thought_signature
+
   class << self
     # Translates an "LLM Concept" provider's FunctionRequest into a ToolCall::Function
     def from_function_request(function_request, result)
-      new(
+      tool_call = new(
         provider_id: function_request.id,
         provider_call_id: function_request.call_id,
         function_name: function_request.function_name,
         function_arguments: function_request.function_args,
         function_result: result
       )
+      # Capture thought_signature for Gemini 3
+      tool_call.thought_signature = function_request.thought_signature if function_request.respond_to?(:thought_signature)
+      tool_call
     end
   end
 
   def to_result
-    {
+    result = {
       call_id: provider_call_id,
       name: function_name,
       arguments: function_arguments,
       output: function_result
     }
+    # Include thought_signature for Gemini 3 reasoning context
+    result[:thought_signature] = thought_signature if thought_signature.present?
+    result
   end
 
   def to_tool_call
