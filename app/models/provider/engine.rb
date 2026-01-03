@@ -296,6 +296,7 @@ class Provider::Engine < Provider
     collected_text = String.new("")
     function_requests = []
     final_usage = nil
+    done_handled = false  # Track if we've already processed the 'done' event
     
     # Stream using Net::HTTP directly for SSE support
     uri = URI(url)
@@ -330,7 +331,7 @@ class Provider::Engine < Provider
           buffer = buffer[(event_end + 2)..]
           
           Rails.logger.debug("[Provider::Engine] Processing SSE event: #{event_data[0..100]}")
-          process_sse_event(event_data, streamer, collected_text, function_requests, final_usage)
+          done_handled = process_sse_event(event_data, streamer, collected_text, function_requests, final_usage, done_handled)
         end
       end
     end
@@ -341,7 +342,7 @@ class Provider::Engine < Provider
     build_chat_response(collected_text, function_requests, final_usage)
   end
   
-  def process_sse_event(event_data, streamer, collected_text, function_requests, final_usage)
+  def process_sse_event(event_data, streamer, collected_text, function_requests, final_usage, done_handled = false)
     event_type = nil
     data_json = nil
     
@@ -354,7 +355,7 @@ class Provider::Engine < Provider
       end
     end
     
-    return unless event_type && data_json
+    return done_handled unless event_type && data_json
     
     begin
       data = JSON.parse(data_json)
@@ -400,6 +401,13 @@ class Provider::Engine < Provider
         streamer.call(chunk)
         
       when "done"
+        # CRITICAL: Only process the FIRST 'done' event - ignore duplicates
+        # This prevents text duplication from multiple done events
+        if done_handled
+          Rails.logger.debug("[Provider::Engine] Ignoring duplicate 'done' event")
+          return done_handled
+        end
+        
         final_usage = data["usage"]
         
         # Emit final response
@@ -420,6 +428,8 @@ class Provider::Engine < Provider
         )
         streamer.call(chunk)
         
+        return true  # Mark done as handled
+        
       when "error"
         Rails.logger.error("[Provider::Engine] Stream error: #{data}")
         raise Error, data["message"] || "Engine stream error"
@@ -428,6 +438,8 @@ class Provider::Engine < Provider
     rescue JSON::ParserError => e
       Rails.logger.warn("[Provider::Engine] Failed to parse SSE data: #{e.message}")
     end
+    
+    done_handled  # Return current state
   end
   
   # =================================================================
