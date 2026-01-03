@@ -287,6 +287,12 @@ class Provider::Engine < Provider
       chat_history: chat_history
     )
     
+    # DEBUG: Log what we're sending
+    if function_results.any?
+      Rails.logger.info("[Provider::Engine] Sending function_results: #{function_results.inspect[0..500]}")
+      Rails.logger.info("[Provider::Engine] Request body tool_results: #{body[:tool_results].inspect[0..500]}")
+    end
+    
     collected_text = String.new("")
     function_requests = []
     final_usage = nil

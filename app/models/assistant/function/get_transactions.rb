@@ -103,22 +103,22 @@ class Assistant::Function::GetTransactions < Assistant::Function
         accounts: {
           type: "array",
           description: "Filter transactions by account name",
-          items: { type: "string", enum: family_account_names }
+          items: { type: "string" }
         },
         categories: {
           type: "array",
           description: "Filter transactions by category name",
-          items: { type: "string", enum: family_category_names }
+          items: { type: "string" }
         },
         merchants: {
           type: "array",
           description: "Filter transactions by merchant name",
-          items: { type: "string", enum: family_merchant_names }
+          items: { type: "string" }
         },
         tags: {
           type: "array",
           description: "Filter transactions by tag name",
-          items: { type: "string", enum: family_tag_names }
+          items: { type: "string" }
         }
       }
     )
