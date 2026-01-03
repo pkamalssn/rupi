@@ -14,19 +14,25 @@ class Assistant::Responder
     # Track whether response was handled by streamer
     response_handled = false
 
-    # For the first response
+    # For the first response - accumulate text in case we have function calls
+    initial_text_chunks = []
+    
     streamer = proc do |chunk|
       case chunk.type
       when "output_text"
-        emit(:output_text, chunk.data)
+        # Accumulate text - we'll emit it only if there are no function requests
+        initial_text_chunks << chunk.data
       when "response"
         response = chunk.data
         response_handled = true
 
         if response.function_requests.any?
+          # Don't emit the initial text - only use the follow-up response text
+          # This prevents duplication when AI sends text + function call together
           handle_follow_up_response(response)
         else
-          # Include messages in the response event so the content can be saved
+          # No function requests - emit all the accumulated text
+          initial_text_chunks.each { |text| emit(:output_text, text) }
           emit(:response, { id: response.id, messages: response.messages })
         end
       end
