@@ -59,9 +59,9 @@ class Assistant::Responder
         when "output_text"
           emit(:output_text, chunk.data)
         when "response"
-          # We do not currently support function executions for a follow-up response (avoid recursive LLM calls that could lead to high spend)
-          # Include messages so the text content can be saved to the AssistantMessage
-          emit(:response, { id: chunk.data.id, messages: chunk.data.messages })
+          # Don't include messages - text was already streamed via output_text events
+          # Just pass the id for tracking (no messages to avoid duplication)
+          emit(:response, { id: chunk.data.id })
         end
       end
 
