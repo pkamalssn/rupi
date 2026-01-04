@@ -54,6 +54,10 @@ class Assistant::Responder
     attr_reader :message, :instructions, :function_tool_caller, :llm
 
     def handle_follow_up_response(response)
+      # Prevent duplicate handling
+      return if @follow_up_handled
+      @follow_up_handled = true
+      
       Rails.logger.info("[Responder] handle_follow_up_response called with #{response.function_requests.size} function_requests")
       response.function_requests.each do |fr|
         Rails.logger.info("[Responder] Function request: #{fr.function_name}")
@@ -97,7 +101,6 @@ class Assistant::Responder
         Rails.logger.warn("[Responder] No text received from follow-up response, generating fallback")
         
         # Generate a context-aware fallback based on what tools were called
-        tool_names = function_tool_calls.map(&:function_name).join(", ")
         fallback_text = generate_fallback_response(function_tool_calls)
         
         emit(:output_text, fallback_text)
