@@ -59,9 +59,13 @@ class Assistant::Responder
         Rails.logger.info("[Responder] Function request: #{fr.function_name}")
       end
       
+      # Track if any text was received
+      text_received = false
+      
       streamer = proc do |chunk|
         case chunk.type
         when "output_text"
+          text_received = true
           emit(:output_text, chunk.data)
         when "response"
           Rails.logger.info("[Responder] Follow-up streamer received response chunk")
@@ -81,11 +85,42 @@ class Assistant::Responder
 
       # Get follow-up response with tool call results
       Rails.logger.info("[Responder] Calling get_llm_response with #{function_tool_calls.size} function_results")
-      get_llm_response(
+      follow_up_response = get_llm_response(
         streamer: streamer,
         function_results: function_tool_calls.map(&:to_result),
         previous_response_id: response.id
       )
+      
+      # FALLBACK: If Gemini returned empty response (no text), generate a helpful message
+      # This happens when Gemini 3 ignores tool_config: NONE and tries to call more tools
+      unless text_received
+        Rails.logger.warn("[Responder] No text received from follow-up response, generating fallback")
+        
+        # Generate a context-aware fallback based on what tools were called
+        tool_names = function_tool_calls.map(&:function_name).join(", ")
+        fallback_text = generate_fallback_response(function_tool_calls)
+        
+        emit(:output_text, fallback_text)
+        emit(:response, { id: follow_up_response&.id || "fallback-#{Time.now.to_i}" })
+      end
+    end
+    
+    def generate_fallback_response(function_tool_calls)
+      # Look at the tool results to generate an appropriate message
+      tool_names = function_tool_calls.map(&:function_name)
+      
+      if tool_names.include?("get_investments")
+        result = function_tool_calls.find { |tc| tc.function_name == "get_investments" }&.function_result
+        if result.present?
+          parsed = JSON.parse(result) rescue nil
+          if parsed && parsed["holdings_count"] == 0
+            return "Based on your data, you currently don't have any recorded investment holdings. This could mean:\n\n1. **No investment accounts linked** - You haven't added any investment accounts yet.\n2. **No holdings data** - Your investment transactions haven't been categorized as holdings.\n\nTo get investment insights, you can:\n- Import your demat/trading account statements\n- Ask me about your **Stocks/Trading transactions** from your bank statements\n\nWould you like me to analyze your stock trading transactions from your bank accounts instead?"
+          end
+        end
+      end
+      
+      # Generic fallback
+      "I processed your request but couldn't generate a detailed response. Please try rephrasing your question or ask about a specific aspect of your finances."
     end
 
     def get_llm_response(streamer:, function_results: [], previous_response_id: nil)
