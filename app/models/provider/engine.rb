@@ -400,11 +400,16 @@ class Provider::Engine < Provider
         )
         streamer.call(chunk)
         
+        # Mark that we've emitted function_requests - don't emit them again in done
+        # We use the done_handled flag for this since both serve the same purpose
+        return true  # This will set done_handled = true in the caller
+        
       when "done"
         # CRITICAL: Only process the FIRST 'done' event - ignore duplicates
         # This prevents text duplication from multiple done events
+        # Also, if done_handled is true from tool_call, we should only emit text, not function_requests
         if done_handled
-          Rails.logger.debug("[Provider::Engine] Ignoring duplicate 'done' event")
+          Rails.logger.debug("[Provider::Engine] Ignoring duplicate 'done' event or tool_call already handled")
           return done_handled
         end
         
@@ -422,9 +427,7 @@ class Provider::Engine < Provider
             id: "engine-#{Time.now.to_i}",
             model: "gemini",
             messages: message ? [message] : [],
-            # DON'T include function_requests here - they were already emitted via "tool_call" event
-            # Including them again causes handle_follow_up_response to be called twice
-            function_requests: []
+            function_requests: function_requests
           ),
           usage: final_usage
         )
