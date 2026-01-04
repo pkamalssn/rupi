@@ -1,180 +1,262 @@
-# RUPI v2.3 🇮🇳
+# RUPI 🇮🇳
 
-### Get ready to manage your Rupees easier with RUPI! ✨
+### Personal Finance Dashboard for India
 
-A next-generation personal finance dashboard built specifically for the **Indian context**. RUPI leverages advanced AI (Gemini 3 Flash) to automate tracking, categorize transactions, and extract insights from your financial documents.
+A clean, open-source frontend for managing your personal finances. Track accounts, view transactions, analyze spending patterns, and visualize your financial health — all designed for the Indian context.
 
-> **Get ready to manage your Rupees easier with RUPI!**
-
-![RUPI Dashboard](public/logo-pwa.png)
+![RUPI Logo](public/logo-pwa.png)
 
 ---
 
-## 🚀 Beta is LIVE!
+## 🌟 Overview
 
-**Try RUPI now:** [https://rupiapp.in](https://rupiapp.in)
+RUPI is an open-source personal finance dashboard built specifically for Indian users. It provides a comprehensive interface for:
 
-RUPI is currently in **open beta**. All features are free during this period. Help us build India's smartest personal finance app!
+- **Multi-account tracking** across all your bank accounts
+- **Transaction management** with categories and tags
+- **Financial reports** including balance sheets and income statements
+- **Net worth tracking** with historical trends
+- **Loan & EMI management** with payment schedules
+- **Investment portfolio** visualization
+- **Budget management** and spending analysis
+- **Family accounts** — track who owns what (Self, Spouse, or Shared)
 
-- **Pricing after beta:** ₹149/month or ₹1,499/year
-- **Beta users get early-adopter discount**
-
----
-
-## ✨ Why RUPI?
-
-| Feature                 | Description                                                                |
-| ----------------------- | -------------------------------------------------------------------------- |
-| 🔒 **Privacy First**    | Documents auto-deleted after parsing. No bank login required.              |
-| 🤖 **AI-Powered**       | Smart categorization, loan import from documents, natural language queries |
-| 🇮🇳 **India-First**      | Built for HDFC, ICICI, SBI, Kotak & 12+ Indian banks                       |
-| 👨‍👩‍👧 **Family Accounts**  | Track who owns what - Husband, Wife, or Shared                             |
-| 📊 **Complete Picture** | Net worth, cash flow, loans, EMIs, investments - all in one place          |
+> **Note:** This is the open-source base for RUPI. Advanced AI features including bank statement import, smart categorization, and AI chat assistant are available through [RUPI Premium](https://rupiapp.in).
 
 ---
 
-## 🏦 Supported Banks & Services
+## ✨ Features
 
-### Bank Statements
+### Dashboard & Analytics
 
-- **Major Banks:** HDFC, ICICI, SBI, Axis, Kotak, RBL
-- **Digital Banks:** Jupiter, Equitas, KVB, UBI, Bandhan
-- **International:** Wise (TransferWise) with multi-currency support
+- 📊 **Net Worth Tracking** — See your complete financial picture
+- 📈 **Cash Flow Analysis** — Income vs expenses over time
+- 🥧 **Spending Breakdown** — Visual category-wise spending charts
+- 📉 **Trend Analysis** — Historical comparisons
 
-### Credit Cards
+### Account Management
 
-- HDFC Credit Card, ICICI Amazon Pay, Scapia, Kotak Royale
+- 🏦 **Bank Accounts** — Savings, Current, Salary, NRI/NRO/NRE
+- 💳 **Credit Cards** — Track balances and payment due dates
+- 🏠 **Loans** — Home, Personal, Gold, Education, Auto loans with EMI schedules
+- 📈 **Investments** — Stocks, Mutual Funds, PPF, EPF, NPS, FDs
+- 🚗 **Assets** — Property, Vehicles, Gold with valuations
 
-### Investments
+### Transaction Features
 
-- Zerodha Tradebook, MFCentral CAS, NPS, PPF
+- 🏷️ **Categories** — Indian-specific categories (UPI, EMI, Recharges, etc.)
+- 🔍 **Search & Filter** — Find any transaction quickly
+- 📝 **Tags** — Custom tags for detailed tracking
+- 🔄 **Transfer Detection** — Auto-match transfers between accounts
 
-### Loans
+### India-First Design
 
-- Home Loans, Car Loans, Personal Loans (HDFC, ICICI, CRED, Bajaj)
-- **AI Loan Import:** Upload sanction letters to auto-create loan accounts!
-
----
-
-## 🤖 AI Features
-
-### RUPI AI Assistant
-
-Chat with RUPI about your finances:
-
-- "What's my net worth?"
-- "How much did I spend on food last month?"
-- "Show me all my EMIs"
-
-### Smart Document Parsing
-
-- Password-protected PDFs ✅
-- Automatic transaction categorization ✅
-- Loan document extraction (principal, rate, EMI) ✅
-- EMI reconciliation (links bank debits to loan EMIs) ✅
+- 💰 **INR (₹) Default** — Built for Rupees
+- 📅 **Indian Date Format** — DD-MM-YYYY
+- 🕐 **IST Timezone** — Asia/Kolkata
+- 🏷️ **Local Categories** — Swiggy, Zomato, UPI, EMI, etc.
 
 ---
 
-## 🔒 Privacy Architecture
+## 🚀 Try RUPI Premium
 
-Your privacy is our priority:
+Want the full RUPI experience with AI-powered features?
 
-| What Happens      | Details                                 |
-| ----------------- | --------------------------------------- |
-| **Documents**     | Auto-deleted immediately after parsing  |
-| **Bank Login**    | Never required - just upload statements |
-| **Data Sharing**  | Zero third-party data sharing           |
-| **Your Control**  | Export or delete all data anytime       |
-| **AI Processing** | Only Google Gemini (no data retention)  |
+**Visit:** [https://rupiapp.in](https://rupiapp.in)
+
+RUPI Premium adds:
+
+- 📄 **Bank Statement Import** — PDF/CSV from 20+ Indian banks
+- 🤖 **AI Assistant** — Chat with RUPI about your finances
+- 🏷️ **Smart Categorization** — Automatic merchant detection
+- 📊 **Advanced Insights** — AI-powered spending analysis
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Backend:** Ruby on Rails 7.2
-- **Frontend:** Hotwire (Turbo & Stimulus), Tailwind CSS
-- **Database:** PostgreSQL (Primary), Redis (Jobs/Cache)
-- **AI Engine:** Google Gemini 3 Flash Preview
-- **PDF Processing:** HexaPDF, Poppler
-- **Deployment:** Render.com (Docker)
-- **Email:** Resend (HTTP API)
-- **Domain:** rupiapp.in (GoDaddy + Cloudflare)
+| Layer               | Technology                 |
+| ------------------- | -------------------------- |
+| **Backend**         | Ruby on Rails 7.2          |
+| **Frontend**        | Hotwire (Turbo + Stimulus) |
+| **Styling**         | Tailwind CSS               |
+| **Database**        | PostgreSQL                 |
+| **Background Jobs** | Sidekiq + Redis            |
+| **Components**      | ViewComponent              |
+| **Charts**          | D3.js                      |
 
 ---
 
-## 🚢 Deployment (Render.com)
+## 📦 Installation
 
-RUPI is deployed on **Render.com** free tier using Docker.
+### Prerequisites
 
-### Environment Variables Required:
+- Ruby 3.2+
+- PostgreSQL 14+
+- Redis 7+
+- Node.js 18+ (for asset compilation)
 
-| Variable          | Description                                         |
-| ----------------- | --------------------------------------------------- |
-| `DATABASE_URL`    | PostgreSQL connection string                        |
-| `REDIS_URL`       | Redis connection string                             |
-| `GEMINI_API_KEY`  | Google AI API key                                   |
-| `SECRET_KEY_BASE` | Rails secret (generate with `SecureRandom.hex(64)`) |
-| `RESEND_API_KEY`  | Resend email API key                                |
-| `EMAIL_SENDER`    | `noreply@yourdomain.com`                            |
-| `APP_DOMAIN`      | `yourdomain.com` (no https://)                      |
+### Quick Start
 
-### DNS Setup (for custom domain):
+```bash
+# Clone the repository
+git clone https://github.com/pkamalssn/rupi.git
+cd rupi
+
+# Install dependencies
+bundle install
+yarn install
+
+# Setup database
+bin/rails db:prepare
+
+# Start the development server
+bin/dev
+```
+
+Visit `http://localhost:3000` to see RUPI running.
+
+### Environment Variables
+
+Create a `.env` file with:
+
+```env
+# Required
+DATABASE_URL=postgres://localhost/rupi_development
+REDIS_URL=redis://localhost:6379/0
+SECRET_KEY_BASE=your-secret-key
+
+# Optional - Email
+RESEND_API_KEY=your-resend-key
+EMAIL_SENDER=noreply@yourdomain.com
+
+# Optional - RUPI Premium API (for AI features)
+RUPI_ENGINE_URL=https://api.rupiapp.in
+RUPI_ENGINE_API_KEY=your-api-key
+```
+
+---
+
+## 🗂 Project Structure
 
 ```
-A     @     216.24.57.1
-CNAME www   your-app.onrender.com
+rupi/
+├── app/
+│   ├── controllers/     # Rails controllers
+│   ├── models/          # Domain models (Account, Transaction, etc.)
+│   │   ├── assistant/   # AI chat interface (requires RUPI Engine)
+│   │   └── provider/    # External service integrations
+│   ├── views/           # ERB templates
+│   ├── components/      # ViewComponents
+│   └── javascript/      # Stimulus controllers
+├── config/              # Rails configuration
+├── db/                  # Migrations and schema
+└── test/                # Test suite
 ```
 
-### Free Tier Limits:
+---
 
-- App sleeps after 15 min inactivity (~30s cold start)
-- Database expires after 90 days (export & reimport)
-- 500 build minutes/month
+## 🧑‍💻 Development
+
+### Running Tests
+
+```bash
+# All tests
+bin/rails test
+
+# Specific test file
+bin/rails test test/models/account_test.rb
+
+# System tests (requires browser)
+bin/rails test:system
+```
+
+### Linting
+
+```bash
+# Ruby
+bin/rubocop
+
+# JavaScript
+npm run lint
+
+# ERB templates
+bundle exec erb_lint ./app/**/*.erb
+```
+
+### Demo Data
+
+```bash
+# Load Indian demo data for development
+rake demo_data:default
+```
 
 ---
 
-## 🆕 What's New in v2.3
+## 🇮🇳 Indian Context
 
-- 🌐 **Custom Domain:** rupiapp.in with SSL
-- 📧 **Professional Email:** Sender is noreply@rupiapp.in
-- 🔐 **Password Reset:** 1-hour tokens with strength validator
-- 📬 **Premium Emails:** Logo, feature reminders, developer contact
-- 💬 **Better Errors:** User-friendly expired token messages
-- 📱 **PWA Ready:** Installable as mobile app
+RUPI is specifically built for Indian users with:
 
----
-
-## 🇮🇳 India-First Defaults
-
-- **Currency:** INR (₹)
-- **Date Format:** DD-MM-YYYY
-- **Timezone:** Asia/Kolkata (IST)
-- **Categories:** EMI Payments, Domestic Help, Recharges, Education, and more
+| Feature           | Indian Adaptation                             |
+| ----------------- | --------------------------------------------- |
+| **Currency**      | INR (₹) as default                            |
+| **Date Format**   | DD-MM-YYYY                                    |
+| **Timezone**      | Asia/Kolkata (IST)                            |
+| **Account Types** | NRE/NRO, PPF, EPF, NPS                        |
+| **Loan Types**    | Home Loan (Sec 24), Gold Loan, Education Loan |
+| **Categories**    | UPI, Swiggy, Zomato, EMI, Recharges, etc.     |
+| **Tax Features**  | Section 80C tracking (planned)                |
 
 ---
 
-## 📧 Contact & Support
+## 🤝 Contributing
 
-For beta feedback, bugs, or feature requests:
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-- **Email:** [pkamalssn@gmail.com](mailto:pkamalssn@gmail.com)
-- **Twitter/X:** [@storyteller_kp](https://x.com/storyteller_kp)
+### Areas for Contribution
 
----
-
-## 👨‍💻 Developer
-
-Built with ❤️ in India by **Kamal Prakash**
-
-Software engineer passionate about building tools that make personal finance accessible and stress-free for every Indian family.
-
-- **GitHub:** [@pkamalssn](https://github.com/pkamalssn)
-- **X (Twitter):** [@storyteller_kp](https://x.com/storyteller_kp)
-- **Email:** [pkamalssn@gmail.com](mailto:pkamalssn@gmail.com)
+- 🌐 Hindi translations
+- 📊 New chart types
+- 🏷️ Additional Indian categories
+- 🐛 Bug fixes
+- 📖 Documentation improvements
 
 ---
 
 ## 📄 License
 
-Private - For Personal Use Only.  
-Copyright © 2025 Kamal Prakash.
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPLv3)**.
+
+See [LICENSE](LICENSE) for details.
+
+### What This Means
+
+- ✅ You can use, modify, and distribute this software
+- ✅ You can use it for commercial purposes
+- ⚠️ You must disclose source code of any modifications
+- ⚠️ Network use (SaaS) requires source disclosure
+- ⚠️ You must keep the same license
+
+---
+
+## 👨‍💻 Author
+
+Built with ❤️ in India by **Kamal Prakash**
+
+- **GitHub:** [@pkamalssn](https://github.com/pkamalssn)
+- **Twitter/X:** [@storyteller_kp](https://x.com/storyteller_kp)
+- **Email:** [pkamalssn@gmail.com](mailto:pkamalssn@gmail.com)
+
+---
+
+## 🙏 Acknowledgments
+
+This project is a fork of [Sure Finance](https://github.com/we-promise/sure), which itself is a community fork of [Maybe Finance](https://github.com/maybe-finance/maybe). Thank you to the original authors for open-sourcing their work.
+
+---
+
+## 📧 Support
+
+- **Issues:** [GitHub Issues](https://github.com/pkamalssn/rupi/issues)
+- **Email:** [pkamalssn@gmail.com](mailto:pkamalssn@gmail.com)
+- **Premium Support:** [rupiapp.in](https://rupiapp.in)

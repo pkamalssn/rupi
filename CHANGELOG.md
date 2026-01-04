@@ -1,4 +1,4 @@
-# Changelog - Indian Finance App
+# Changelog - RUPI
 
 All notable changes to this project will be documented in this file.
 
@@ -7,46 +7,90 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [0.2.0] - 2024-12-24
+## [3.0.0] - 2026-01-04
 
-### Added - Indian Demo Data
-- Indian demo data generator with 200+ transactions
-- Indian expense categories (Food & Dining, Shopping, Transportation, Utilities, Healthcare, Investments & Savings, Loan Payments)
-- Indian income categories (Salary, Freelance Income, Rental Income, Investment Income)
-- Indian bank accounts (HDFC Savings, ICICI Salary, SBI Current)
-- Indian credit cards (HDFC Credit Card, ICICI Amazon Pay Card)
-- Indian investment accounts (Zerodha Demat, MF Central, PPF Account, EPF Account)
-- Indian loan accounts (Home Loan - HDFC, Car Loan - SBI)
-- Indian merchants in transactions (Swiggy, Zomato, Amazon, Flipkart, BigBasket, Blinkit, Uber, Ola, Rapido, Barbeque Nation, etc.)
-- Property and vehicle valuations in INR
+### Added - Open Core Architecture
 
-### Added - UI/UX Improvements
-- "Upload Statement" button added to dashboard header (desktop + mobile)
-- Bank statement upload made PRIMARY action in empty dashboard state
-- Helpful text showing supported banks (HDFC, ICICI, SBI, Axis, Kotak)
+- **Provider::Engine client** for communicating with RUPI Engine API
+- **SSE streaming support** for real-time AI chat responses
+- **Tool execution framework** - AI can query database via function calling
+- **Assistant responder** with Gemini 3 thoughtSignature support
+- **Context-aware fallbacks** when AI returns empty responses
+- **RUPI_SIDECAR_SESSION.md** documentation for debugging
 
-### Changed
-- Demo data generator now creates Indian family with INR currency, India country, Asia/Kolkata timezone, DD-MM-YYYY date format
-- Budget auto-fill now uses INR currency and rounds to nearest ₹500
+### Changed - Architecture Refactor
 
-### Removed - US/EU Provider Features
-- Plaid integration routes and JavaScript removed (US-only)
-- SimpleFIN integration routes removed (US-only)
-- Enable Banking integration routes removed (EU-only)
-- Lunchflow integration routes removed (US-only)
-- Plaid webhooks removed
-- Account creation method selector simplified to manual entry + bank statement upload
-- US provider links removed from UI
+- AI chat now uses RUPI Engine API instead of local Gemini calls
+- Bank statement parsing moved to RUPI Engine (not in this repo)
+- Auto-categorization moved to RUPI Engine (not in this repo)
+- Renamed project from "RUPI v2.3" to "RUPI" (open-source base)
+
+### Removed - Proprietary Features
+
+- Local Gemini API integration (moved to RUPI Engine)
+- Bank statement parsers (moved to RUPI Engine)
+- Auto-categorization logic (moved to RUPI Engine)
+- EMI reconciliation engine (moved to RUPI Engine)
+
+### Fixed - AI Chat Stability
+
+- Fixed triple text duplication in AI responses
+- Fixed "Analyzing your data..." getting stuck
+- Fixed thoughtSignature handling for Gemini 3
+- Fixed empty responses when period has no data
+- Added smart period defaults (last complete month)
 
 ---
 
-## [0.1.x] - 2024-12-23
+## [2.3.0] - 2025-12-27
+
+### Added
+
+- 🌐 **Custom Domain:** rupiapp.in with SSL
+- 📧 **Professional Email:** Sender is noreply@rupiapp.in
+- 🔐 **Password Reset:** 1-hour tokens with strength validator
+- 📬 **Premium Emails:** Logo, feature reminders, developer contact
+- 💬 **Better Errors:** User-friendly expired token messages
+- 📱 **PWA Ready:** Installable as mobile app
+
+---
+
+## [2.0.0] - 2024-12-24
+
+### Added - Indian Demo Data
+
+- Indian demo data generator with 200+ transactions
+- Indian expense categories (Food & Dining, Shopping, Transportation, etc.)
+- Indian bank accounts (HDFC Savings, ICICI Salary, SBI Current)
+- Indian credit cards (HDFC Credit Card, ICICI Amazon Pay Card)
+- Indian investment accounts (Zerodha Demat, MF Central, PPF, EPF)
+- Indian loan accounts (Home Loan - HDFC, Car Loan - SBI)
+- Indian merchants (Swiggy, Zomato, Amazon, Flipkart, etc.)
+
+### Changed
+
+- Demo data generator creates Indian family with INR currency
+- Budget auto-fill uses INR and rounds to nearest ₹500
+- Default timezone set to Asia/Kolkata (IST)
+- Date format default is DD-MM-YYYY
+
+### Removed - US/EU Provider Features
+
+- Plaid integration (US-only)
+- SimpleFIN integration (US-only)
+- Enable Banking integration (EU-only)
+- Lunchflow integration (US-only)
+
+---
+
+## [1.0.0] - 2024-12-23
 
 ### Added - Indian Features
-- Bank statement parsers for HDFC, ICICI, SBI, Axis, Kotak banks
+
+- Bank statement parsers for HDFC, ICICI, SBI, Axis, Kotak
 - Generic bank statement parser for other Indian banks
 - PDF and Excel statement parsing support
-- Smart auto-categorization for Indian merchants (Swiggy, Zomato, Amazon, Flipkart, etc.)
+- Smart auto-categorization for Indian merchants
 - Bank statement upload UI at `/bank_statement/new`
 - Indian date format support (DD/MM/YYYY)
 - Default currency changed to INR (₹)
@@ -57,98 +101,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This project was forked from [Sure Finance](https://github.com/we-promise/sure), a community fork of Maybe Finance. Original features included:
 
-- Multi-asset account tracking (banking, investment, crypto, property, vehicle)
+- Multi-asset account tracking
 - Transaction management with categories and tags
 - Budget management
 - Net worth tracking
 - Investment portfolio tracking
-- Plaid integration (US/EU)
 - CSV import
 - Multi-currency support
-- Hotwire (Turbo + Stimulus) frontend
+- Hotwire frontend
 - ViewComponent UI library
 - D3.js charts
 - Tailwind CSS styling
 
 ---
 
-## Planned Future Releases
-
-### v0.3.0 - Indian Investment Types
-- [ ] PPF (Public Provident Fund) as dedicated account type
-- [ ] EPF (Employees' Provident Fund) as dedicated account type
-- [ ] NPS (National Pension System) as dedicated account type
-- [ ] Mutual Fund integration with AMFI
-- [ ] Stock holdings with NSE/BSE integration
-- [ ] Sovereign Gold Bonds
-- [ ] Fixed Deposits
-- [ ] Recurring Deposits
-
-### v0.4.0 - Indian Loan Types
-- [ ] Home Loan (with Section 24 tax tracking)
-- [ ] Personal Loan
-- [ ] Gold Loan
-- [ ] Education Loan (with tax benefits)
-- [ ] Auto Loan
-- [ ] Business Loan
-- [ ] Loan Against Property
-- [ ] Overdraft/Credit Line
-
-### v0.5.0 - UPI Integration
-- [ ] UPI transaction import
-- [ ] GPay, PhonePe, Paytm, CRED, BharatPe support
-- [ ] UPI ID linking to accounts
-- [ ] UPI merchant categorization
-
-### v0.6.0 - Tax Features
-- [ ] TDS tracking
-- [ ] Advance Tax tracking
-- [ ] Section 80C deduction calculator
-- [ ] Section 80D (health insurance) tracking
-- [ ] Section 80CCD (NPS) tracking
-- [ ] Capital gains tracking (STCG, LTCG)
-- [ ] Form 26AS integration
-
-### v0.7.0 - Account Aggregator
-- [ ] RBI AA framework integration
-- [ ] Finvu integration
-- [ ] OneScrape integration
-- [ ] Consent management
-
-### v0.8.0 - Localization
-- [ ] Hindi translations
-- [ ] Indian number formatting (₹1,23,456.78)
-- [ ] Regional language support
-
----
-
 ## Version History
 
-| Version | Date | Notes |
-|---------|------|-------|
-| 0.2.0 | 2024-12-24 | Indian demo data, US providers removed, UI improvements |
-| 0.1.x | 2024-12-23 | Initial Indian bank statement parsers added |
-| Original | - | Forked from Sure Finance |
+| Version  | Date       | Notes                                          |
+| -------- | ---------- | ---------------------------------------------- |
+| 3.0.0    | 2026-01-04 | Open Core architecture, AI via RUPI Engine API |
+| 2.3.0    | 2025-12-27 | Custom domain, PWA, email improvements         |
+| 2.0.0    | 2024-12-24 | Indian demo data, US providers removed         |
+| 1.0.0    | 2024-12-23 | Initial Indian bank statement parsers          |
+| Original | -          | Forked from Sure Finance                       |
 
 ---
 
-## Migration Guide
+## License
 
-### From 0.1.x to 0.2.0
-
-1. **US Providers Removed**: Plaid, SimpleFIN, Enable Banking, and Lunchflow routes are now disabled
-2. **Demo Data**: Run `rake demo_data:default` to load Indian demo data
-3. **Currency**: New families default to INR, Asia/Kolkata timezone, DD-MM-YYYY date format
-
-### From Original Sure Finance
-
-If you're upgrading from the original Sure Finance:
-
-1. **Currency**: Default currency is now INR instead of USD
-2. **Bank Sync**: Plaid/SimpleFIN have been removed (US/EU only)
-3. **Import**: Use bank statement upload instead for Indian banks
-4. **Categories**: New Indian-specific categories added
-
-### Data Migration
-
-Existing families will keep their currency setting. New families will default to INR.
+RUPI is licensed under **AGPLv3**. See [LICENSE](LICENSE) for details.
