@@ -54,11 +54,17 @@ class Assistant::Responder
     attr_reader :message, :instructions, :function_tool_caller, :llm
 
     def handle_follow_up_response(response)
+      Rails.logger.info("[Responder] handle_follow_up_response called with #{response.function_requests.size} function_requests")
+      response.function_requests.each do |fr|
+        Rails.logger.info("[Responder] Function request: #{fr.function_name}")
+      end
+      
       streamer = proc do |chunk|
         case chunk.type
         when "output_text"
           emit(:output_text, chunk.data)
         when "response"
+          Rails.logger.info("[Responder] Follow-up streamer received response chunk")
           # Don't include messages - text was already streamed via output_text events
           # Just pass the id for tracking (no messages to avoid duplication)
           emit(:response, { id: chunk.data.id })
@@ -66,6 +72,7 @@ class Assistant::Responder
       end
 
       function_tool_calls = function_tool_caller.fulfill_requests(response.function_requests)
+      Rails.logger.info("[Responder] Executed #{function_tool_calls.size} tool calls")
 
       emit(:response, {
         id: response.id,
@@ -73,6 +80,7 @@ class Assistant::Responder
       })
 
       # Get follow-up response with tool call results
+      Rails.logger.info("[Responder] Calling get_llm_response with #{function_tool_calls.size} function_results")
       get_llm_response(
         streamer: streamer,
         function_results: function_tool_calls.map(&:to_result),

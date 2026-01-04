@@ -422,7 +422,9 @@ class Provider::Engine < Provider
             id: "engine-#{Time.now.to_i}",
             model: "gemini",
             messages: message ? [message] : [],
-            function_requests: function_requests
+            # DON'T include function_requests here - they were already emitted via "tool_call" event
+            # Including them again causes handle_follow_up_response to be called twice
+            function_requests: []
           ),
           usage: final_usage
         )
