@@ -1,0 +1,49 @@
+# Cloud Build configuration for rupi-v3
+# Triggered on push to master branch
+# Builds Docker image and deploys to Cloud Run
+
+steps:
+  # Build the Docker image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "--platform"
+      - "linux/amd64"
+      - "-t"
+      - "asia-south1-docker.pkg.dev/$PROJECT_ID/rupi-images/rupi-v3:$COMMIT_SHA"
+      - "-t"
+      - "asia-south1-docker.pkg.dev/$PROJECT_ID/rupi-images/rupi-v3:latest"
+      - "."
+
+  # Push tagged image to Artifact Registry
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "asia-south1-docker.pkg.dev/$PROJECT_ID/rupi-images/rupi-v3:$COMMIT_SHA"
+
+  # Push latest tag
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "asia-south1-docker.pkg.dev/$PROJECT_ID/rupi-images/rupi-v3:latest"
+
+  # Deploy to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "rupi-v3"
+      - "--image"
+      - "asia-south1-docker.pkg.dev/$PROJECT_ID/rupi-images/rupi-v3:$COMMIT_SHA"
+      - "--region"
+      - "asia-south1"
+      - "--platform"
+      - "managed"
+
+images:
+  - "asia-south1-docker.pkg.dev/$PROJECT_ID/rupi-images/rupi-v3:$COMMIT_SHA"
+  - "asia-south1-docker.pkg.dev/$PROJECT_ID/rupi-images/rupi-v3:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
