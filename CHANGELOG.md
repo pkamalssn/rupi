@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.1.0] - 2026-01-14
+
+### Added - Production Deployment
+
+- 🌐 **Google Cloud Run Deployment** - Production-grade infrastructure
+- 📧 **Resend Email Integration** - Professional email from `mail.rupiapp.in`
+- 🔌 **Solid Cable** - Database-backed ActionCable (no Redis needed)
+- 🤖 **Gemini 3 Flash** - Upgraded to `gemini-3-flash-preview`
+
+### Changed
+
+- Email senders now use custom domain:
+  - Welcome: `vanakkam@mail.rupiapp.in`
+  - Password Reset: `noreply@mail.rupiapp.in`
+  - Invitations: `support@mail.rupiapp.in`
+- ActionCable uses PostgreSQL instead of Redis
+- Improved email templates (removed repetition, cleaner design)
+- Version display now dynamic (uses `Rupi.full_version`)
+
+### Fixed
+
+- Docker file permissions (chown entire /rails directory)
+- WebSocket connections in Cloud Run environment
+- AI Chat personality consistency
+
+---
+
 ## [3.0.0] - 2026-01-04
 
 ### Added - Open Core Architecture
@@ -119,6 +146,7 @@ This project was forked from [Sure Finance](https://github.com/we-promise/sure),
 
 | Version  | Date       | Notes                                          |
 | -------- | ---------- | ---------------------------------------------- |
+| 3.1.0    | 2026-01-14 | Google Cloud, Solid Cable, Resend email        |
 | 3.0.0    | 2026-01-04 | Open Core architecture, AI via RUPI Engine API |
 | 2.3.0    | 2025-12-27 | Custom domain, PWA, email improvements         |
 | 2.0.0    | 2024-12-24 | Indian demo data, US providers removed         |
