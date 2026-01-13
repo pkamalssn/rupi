@@ -24,7 +24,7 @@
   </div>
 <% end %>
 
-<%= styled_form_with model: @user, url: registration_path, class: "space-y-4" do |form| %>
+<%= styled_form_with model: @user, url: registration_path, class: "space-y-4", data: { turbo: false } do |form| %>
   <%= form.email_field :email,
       autofocus: false,
       autocomplete: "email",

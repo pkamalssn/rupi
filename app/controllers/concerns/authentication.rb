@@ -28,19 +28,16 @@ module Authentication
     end
 
     def find_session_by_cookie
-      cookie_value = cookies.signed[:session_token]
-
-      if cookie_value.present?
-        Session.find_by(id: cookie_value)
-      else
-        nil
-      end
+      session_id = session[:session_token] || cookies.signed[:session_token]
+      return nil unless session_id.present?
+      
+      Session.find_by(id: session_id)
     end
 
     def create_session_for(user)
-      session = user.sessions.create!
-      cookies.signed.permanent[:session_token] = { value: session.id, httponly: true }
-      session
+      user_session = user.sessions.create!
+      session[:session_token] = user_session.id
+      user_session
     end
 
     def self_hosted_first_login?

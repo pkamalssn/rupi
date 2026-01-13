@@ -45,8 +45,13 @@ Rails.application.configure do
   config.force_ssl = ActiveModel::Type::Boolean.new.cast(ENV.fetch("RAILS_FORCE_SSL", true))
 
   # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  # Can be used together with config.force_ssl for Strict-Transport-Security and secure cookies.
   config.assume_ssl = ActiveModel::Type::Boolean.new.cast(ENV.fetch("RAILS_ASSUME_SSL", true))
+
+  # Allow any host since we're behind Google Cloud Load Balancer
+  config.hosts = nil
+  
+  # Simple session store - no domain restriction, let the browser handle it
+  config.session_store :cookie_store, key: "_sure_session"
 
   # Log to Logtail if API key is present, otherwise log to STDOUT
   base_logger = if ENV["LOGTAIL_API_KEY"].present? && ENV["LOGTAIL_INGESTING_HOST"].present?

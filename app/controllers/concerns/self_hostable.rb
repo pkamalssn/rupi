@@ -35,6 +35,8 @@ module SelfHostable
     end
 
     def redis_connected?
+      return true if ENV["SKIP_REDIS_CHECK"].present?
+
       Redis.new.ping
       true
     rescue Redis::CannotConnectError
