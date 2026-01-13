@@ -139,3 +139,5 @@ group :test do
   gem "rswag-specs"
   gem "rswag-ui"
 end
+
+gem "solid_cable", "~> 3.0"

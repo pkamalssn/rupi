@@ -9,13 +9,28 @@ default: &default
   password: <%= ENV.fetch("POSTGRES_PASSWORD") { nil } %>
 
 development:
-  <<: *default
-  database: <%= ENV.fetch("POSTGRES_DB") { "sure_development" } %>
+  primary:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") { "sure_development" } %>
+  cable:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") { "sure_development" } %>
+    migrations_paths: db/cable_migrate
 
 test:
-  <<: *default
-  database: <%= ENV.fetch("POSTGRES_DB") { "sure_test" } %>
+  primary:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") { "sure_test" } %>
+  cable:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") { "sure_test" } %>
+    migrations_paths: db/cable_migrate
 
 production:
-  <<: *default
-  database: <%= ENV.fetch("POSTGRES_DB") { "sure_production" } %>
+  primary:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") { "sure_production" } %>
+  cable:
+    <<: *default
+    database: <%= ENV.fetch("POSTGRES_DB") { "sure_production" } %>
+    migrations_paths: db/cable_migrate
