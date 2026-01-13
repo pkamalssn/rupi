@@ -4,6 +4,6 @@ class PasswordMailer < ApplicationMailer
     @subject = t(".subject", product_name: product_name)
     @cta = t(".cta")
 
-    mail to: @user.email, subject: @subject
+    mail to: @user.email, from: noreply_sender_address, subject: @subject
   end
 end

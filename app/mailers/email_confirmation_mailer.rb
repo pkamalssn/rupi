@@ -10,6 +10,6 @@ class EmailConfirmationMailer < ApplicationMailer
     @cta = t(".cta")
     @confirmation_url = new_email_confirmation_url(token: @user.generate_token_for(:email_confirmation))
 
-    mail to: @user.unconfirmed_email, subject: @subject
+    mail to: @user.unconfirmed_email, from: noreply_sender_address, subject: @subject
   end
 end

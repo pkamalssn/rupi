@@ -10,7 +10,9 @@ class WelcomeMailer < ApplicationMailer
     
     mail(
       to: @user.email,
+      from: welcome_sender_address,
       subject: "Welcome to the #{@product_name} Beta! 🚀"
     )
   end
 end
+

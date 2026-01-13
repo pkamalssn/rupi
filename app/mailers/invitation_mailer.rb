@@ -5,6 +5,7 @@ class InvitationMailer < ApplicationMailer
 
     mail(
       to: @invitation.email,
+      from: support_sender_address,
       subject: t(
         ".subject",
         inviter: @invitation.inviter.display_name,
