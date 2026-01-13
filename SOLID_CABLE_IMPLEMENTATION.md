@@ -146,7 +146,7 @@ production:
 
 ## Production Verification ✅
 
-**Tested and verified on January 13, 2026:**
+**Tested and verified on January 13-14, 2026:**
 
 | Feature                  | Status     |
 | ------------------------ | ---------- |
@@ -155,10 +155,21 @@ production:
 | Tool calls (9 functions) | ✅ Working |
 | Bank statement upload    | ✅ Working |
 | RUPI personality         | ✅ Working |
+| Email system (Resend)    | ✅ Working |
 
-**AI Model upgraded to:** `gemini-3-flash-preview`
+**AI Model:** `gemini-3-flash-preview`
+
+**Email Configuration:**
+| Email Type | Sender |
+|------------|--------|
+| Welcome | `vanakkam@mail.rupiapp.in` |
+| Password Reset | `noreply@mail.rupiapp.in` |
+| Email Confirm | `noreply@mail.rupiapp.in` |
+| Invitations | `support@mail.rupiapp.in` |
+
+**Production Version:** `v1.6.1-email-templates`
 
 ---
 
 _Document maintained by: Claude (Antigravity AI)_  
-_Last updated: January 13, 2026_
+_Last updated: January 14, 2026_
