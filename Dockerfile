@@ -57,9 +57,9 @@ COPY --from=build /usr/local/bundle /usr/local/bundle
 COPY --from=build /rails /rails
 
 # Run and own only the runtime files as a non-root user for security
+# CRITICAL: Must chown all app files so rails user can read views/templates
 RUN useradd rails --create-home --shell /bin/bash && \
-    mkdir -p db log storage tmp && \
-    chown -R rails:rails db log storage tmp
+    chown -R rails:rails /rails
 USER rails:rails
 
 # Entrypoint prepares the database.
