@@ -113,3 +113,11 @@ node_modules/
 
 PROJECT_DOCUMENTATION.md
 .firebaserc
+
+# Internal Development Documentation (NOT for public GitHub)
+# These are private dev session notes - keep in .internal/ folder locally
+SOLID_CABLE_IMPLEMENTATION.md
+docs/RUPI_SIDECAR_SESSION.md
+GOOGLE_CLOUD_DEPLOYMENT_PLAN.md
+*.internal.md
+.internal/
