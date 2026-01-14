@@ -42,6 +42,9 @@ class Import < ApplicationRecord
   has_many :accounts, dependent: :destroy
   has_many :entries, dependent: :destroy
 
+  # Encrypt sensitive financial data
+  encrypts :account_number, deterministic: true
+
   # =====================================================
   # CATEGORIZATION STATUS TRACKING
   # =====================================================

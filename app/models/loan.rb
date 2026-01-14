@@ -22,11 +22,14 @@ class Loan < ApplicationRecord
   # Enhanced loan tracking fields (set via migration)
   # - emi_day: Day of month when EMI is debited (1-28)
   # - lender_name: Bank/NBFC name
-  # - loan_account_number: Loan account number
+  # - loan_account_number: Loan account number (ENCRYPTED)
   # - disbursement_date: When loan was disbursed
   # - tenure_months: Original loan tenure
   # - interest_rate: Annual interest rate
   # - rate_type: fixed or floating
+
+  # Encrypt sensitive financial data
+  encrypts :loan_account_number, deterministic: true
 
   has_many :emi_payments, dependent: :destroy
 
