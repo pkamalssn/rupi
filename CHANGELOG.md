@@ -3,7 +3,49 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
+
+---
+
+## [3.3.0] - 2026-01-14
+
+### Added - Onboarding & Security Release 🚀
+
+#### 🎉 Onboarding Experience
+
+- **Redesigned Welcome Screen** - Clean, modern design without emojis
+- **Load Sample Data** - One-click button to populate demo Indian financial portfolio
+- **Guided Tour** - 7-step interactive tour for first-time users
+- **Tour Auto-Start** - Tour triggers automatically after loading sample data
+- **"Take a Tour" Button** - Manual tour trigger in user menu
+
+#### 📊 Sample Data (Demo Portfolio)
+
+- 2 Savings Accounts (HDFC, SBI) with realistic transactions
+- 2 Credit Cards (HDFC Millennia, Amazon Pay ICICI)
+- 2 Loans (SBI Home Loan ₹42.5L, Bajaj Personal Loan ₹1.85L)
+- 2 Investments (PPF ₹5.2L, ICICI Fixed Deposit ₹2L)
+- 30+ realistic Indian transactions (Swiggy, Zomato, TCS Salary, etc.)
+
+#### 🔒 Security Hardening
+
+- **Database Backups** - Automated daily backups at 3 AM
+- **SSL Required** - All database connections now require SSL
+- **Field-Level Encryption** - Account numbers encrypted (AES-256-GCM)
+- **Google Cloud Storage** - Profile images stored in GCS (persistent across deployments)
+- **Graceful Avatar Handling** - `safe_avatar_url` prevents crashes on missing files
+
+#### 🛠️ Bug Fixes
+
+- Fixed "Supports HDFC, ICICI..." text placement (now inside Upload card)
+- Fixed dark mode icon colors on welcome screen
+- Fixed profile image upload persistence (was using container disk)
+- Changed onboarding button from "Complete" to "Next"
+
+### Changed
+
+- Welcome screen uses design system tokens for consistent theming
+- Sample data button has confirmation dialog before loading
 
 ---
 
