@@ -15,10 +15,27 @@
       <%= render "assistant_messages/tool_calls", message: assistant_message %>
     <% end %>
 
-    <div class="flex items-start gap-3 mb-6">
+    <div class="flex items-start gap-3 mb-6 group">
       <%= render "chats/ai_avatar" %>
 
-      <div class="prose prose--ai-chat"><%= markdown(assistant_message.content) %></div>
+      <div class="flex-1">
+        <div class="prose prose--ai-chat" data-copy-target="content"><%= markdown(assistant_message.content) %></div>
+        
+        <%# Copy button - appears on hover %>
+        <div class="mt-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+          <button type="button"
+                  data-controller="clipboard"
+                  data-clipboard-text-value="<%= assistant_message.content.gsub('"', '&quot;') %>"
+                  data-action="click->clipboard#copy"
+                  class="inline-flex items-center gap-1 text-xs text-secondary hover:text-primary px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+                  title="Copy response">
+            <span data-clipboard-target="icon">
+              <%= icon("copy", size: "sm") %>
+            </span>
+            <span data-clipboard-target="text">Copy</span>
+          </button>
+        </div>
+      </div>
     </div>
   <% end %>
 </div>
