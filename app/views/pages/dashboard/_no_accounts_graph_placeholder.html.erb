@@ -10,17 +10,25 @@
 
     <%# Action Cards %>
     <div class="space-y-3">
-      <%# Primary: Upload Bank Statement %>
+      <%# Primary: Upload Bank Statement with bank list %>
       <%= link_to new_bank_statement_path, 
-          class: "flex items-center gap-4 p-4 rounded-xl border border-accent/30 bg-accent/5 hover:bg-accent/10 hover:border-accent/50 transition-all group" do %>
-        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-accent/15 rounded-lg">
-          <%= icon("file-text", class: "text-accent") %>
+          class: "block rounded-xl border border-accent/30 bg-accent/5 hover:bg-accent/10 hover:border-accent/50 transition-all group" do %>
+        <div class="flex items-center gap-4 p-4">
+          <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-accent/15 rounded-lg">
+            <%= icon("file-text", class: "text-accent") %>
+          </div>
+          <div class="flex-1 text-left">
+            <p class="font-medium text-primary">Upload Bank Statement</p>
+            <p class="text-xs text-secondary mt-0.5">Import transactions from PDF or Excel</p>
+          </div>
+          <%= icon("chevron-right", class: "text-secondary group-hover:text-accent transition-colors") %>
         </div>
-        <div class="flex-1 text-left">
-          <p class="font-medium text-primary">Upload Bank Statement</p>
-          <p class="text-xs text-secondary mt-0.5">Import transactions from PDF or Excel</p>
+        <%# Supported banks - part of the upload card %>
+        <div class="px-4 pb-3">
+          <p class="text-xs text-tertiary">
+            HDFC, ICICI, SBI, Axis, Kotak, Jupiter, RBL + 15 more banks
+          </p>
         </div>
-        <%= icon("chevron-right", class: "text-secondary group-hover:text-accent transition-colors") %>
       <% end %>
 
       <%# Secondary: Add Manually %>
@@ -71,10 +79,5 @@
       <%= icon("database", size: "sm") %>
       <span class="text-sm font-medium">Load Sample Data</span>
     <% end %>
-
-    <%# Supported Banks %>
-    <p class="text-xs text-tertiary text-center mt-6">
-      Supports HDFC, ICICI, SBI, Axis, Kotak, Jupiter, RBL and 15+ more banks
-    </p>
   </div>
 </div>
