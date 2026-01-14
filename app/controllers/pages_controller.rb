@@ -1,7 +1,7 @@
 class PagesController < ApplicationController
   include Periodable
 
-  skip_authentication only: :redis_configuration_error
+  skip_authentication only: [:redis_configuration_error, :privacy, :terms, :feedback]
 
   def dashboard
     @balance_sheet = Current.family.balance_sheet
