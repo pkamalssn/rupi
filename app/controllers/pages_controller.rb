@@ -79,7 +79,9 @@ class PagesController < ApplicationController
     result = DemoDataCreator.new(Current.family).call
     
     if result
-      flash[:notice] = "Sample data loaded successfully! Explore your new accounts."
+      flash[:notice] = "Sample data loaded! Take a quick tour to learn about RUPI's features."
+      # Set flag to auto-start tour
+      session[:start_tour] = true
     else
       flash[:alert] = "Could not load sample data. You may already have accounts."
     end

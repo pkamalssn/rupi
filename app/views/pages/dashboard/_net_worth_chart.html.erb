@@ -1,6 +1,6 @@
 <%# locals: (balance_sheet:, period:, **args) %>
 
-<div id="net-worth-chart">
+<div id="net-worth-chart" data-tour-target="netWorth">
   <% series = balance_sheet.net_worth_series(period: period) %>
   <div class="flex justify-between gap-4 px-4">
     <div class="space-y-2">

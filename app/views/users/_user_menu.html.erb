@@ -24,6 +24,7 @@
     <% menu.with_item(variant: "link", text: "Settings", icon: "settings", href: accounts_path(return_to: request.fullpath)) %>
     <% menu.with_item(variant: "link", text: "About", icon: "info", href: settings_guides_path) %>
     <% menu.with_item(variant: "link", text: "Help & FAQ", icon: "help-circle", href: feedback_path) %>
+    <% menu.with_item(variant: "button", text: "Take a Tour", icon: "compass", data: { action: "tour#start" }) %>
 
     <% menu.with_item(variant: "divider") %>
 
