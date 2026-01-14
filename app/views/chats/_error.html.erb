@@ -1,18 +1,40 @@
 <%# locals: (chat:) %>
 
-<div id="chat-error" class="px-3 py-2 bg-red-100 border border-red-500 rounded-lg">
-  <% if chat.debug_mode? %>
-    <div class="overflow-x-auto text-xs p-4 bg-red-200 rounded-md mb-2">
+<div id="chat-error" class="px-3 py-3 bg-red-50 border border-red-200 rounded-lg">
+  <% if chat.debug_mode? && chat.error.present? %>
+    <div class="overflow-x-auto text-xs p-3 bg-red-100 rounded-md mb-3 font-mono">
       <code><%= chat.error %></code>
     </div>
   <% end %>
 
-  <div class="flex items-center justify-between gap-2">
-    <p class="text-xs text-red-500">Failed to generate response.  Please try again.</p>
-
-    <%= render DS::Button.new(
-      text: "Retry",
-      href: retry_chat_path(chat),
-    ) %>
+  <div class="flex items-start gap-3">
+    <div class="text-red-500 mt-0.5">
+      <%= icon("alert-circle", size: 20) rescue "⚠️" %>
+    </div>
+    <div class="flex-1 space-y-2">
+      <% error_message = case chat.error.to_s
+        when /timeout/i
+          "AI is taking too long to respond. Please try again."
+        when /unavailable|connection/i
+          "AI service is temporarily unavailable. Please try again in a few minutes."
+        when /rate_limit|too many/i
+          "Too many requests. Please wait a minute before trying again."
+        else
+          "Something went wrong. Please try again."
+        end
+      %>
+      <p class="text-sm text-red-700"><%= error_message %></p>
+      
+      <div class="flex items-center gap-2">
+        <%= render DS::Button.new(
+          text: "Try Again",
+          href: retry_chat_path(chat),
+          variant: :secondary,
+          size: :sm
+        ) %>
+        
+        <span class="text-xs text-secondary">or try rephrasing your question</span>
+      </div>
+    </div>
   </div>
 </div>
