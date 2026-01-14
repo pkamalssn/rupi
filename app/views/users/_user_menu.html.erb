@@ -23,6 +23,12 @@
 
     <% menu.with_item(variant: "link", text: "Settings", icon: "settings", href: accounts_path(return_to: request.fullpath)) %>
     <% menu.with_item(variant: "link", text: "About", icon: "info", href: settings_guides_path) %>
+    <% menu.with_item(variant: "link", text: "Help & FAQ", icon: "help-circle", href: feedback_path) %>
+
+    <% menu.with_item(variant: "divider") %>
+
+    <% menu.with_item(variant: "link", text: "Privacy Policy", icon: "shield", href: privacy_path) %>
+    <% menu.with_item(variant: "link", text: "Terms of Service", icon: "file-text", href: terms_path) %>
 
     <% menu.with_item(variant: "divider") %>
 
