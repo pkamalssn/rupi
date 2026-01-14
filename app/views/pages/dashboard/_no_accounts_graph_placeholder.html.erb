@@ -1,61 +1,80 @@
-<div class="bg-container shadow-border-xs rounded-xl py-6 flex flex-col items-center justify-center">
-  <div class="space-y-6 text-center flex flex-col items-center px-4 max-w-md">
-    <%# Welcome Header %>
-    <div class="space-y-2">
-      <%= render DS::FilledIcon.new(
-        variant: :container,
-        icon: "sparkles",
-      ) %>
-      <h2 class="text-lg font-semibold text-primary">Welcome to RUPI! 🎉</h2>
-      <p class="text-secondary text-sm">Let's set up your first account to start tracking your finances.</p>
+<%# Welcome screen for new users with no accounts %>
+
+<div class="bg-container shadow-border-xs rounded-xl p-8">
+  <div class="max-w-lg mx-auto">
+    <%# Header %>
+    <div class="text-center mb-8">
+      <h2 class="text-xl font-semibold text-primary">Welcome to RUPI</h2>
+      <p class="text-secondary text-sm mt-2">Let's set up your first account to start tracking your finances.</p>
     </div>
 
-    <%# Quick Action Cards %>
-    <div class="w-full space-y-3">
+    <%# Action Cards %>
+    <div class="space-y-3">
       <%# Primary: Upload Bank Statement %>
       <%= link_to new_bank_statement_path, 
-          class: "w-full flex items-center gap-4 p-4 bg-accent/5 border border-accent/20 rounded-xl hover:bg-accent/10 hover:border-accent/40 transition-all group" do %>
-        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-accent/10 rounded-lg group-hover:bg-accent/20 transition-colors">
+          class: "flex items-center gap-4 p-4 rounded-xl border border-accent/30 bg-accent/5 hover:bg-accent/10 hover:border-accent/50 transition-all group" do %>
+        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-accent/15 rounded-lg">
           <%= icon("file-text", class: "text-accent") %>
         </div>
-        <div class="text-left">
+        <div class="flex-1 text-left">
           <p class="font-medium text-primary">Upload Bank Statement</p>
-          <p class="text-xs text-secondary">Import transactions from PDF or Excel</p>
+          <p class="text-xs text-secondary mt-0.5">Import transactions from PDF or Excel</p>
         </div>
-        <%= icon("chevron-right", class: "ml-auto text-secondary group-hover:text-accent transition-colors") %>
+        <%= icon("chevron-right", class: "text-secondary group-hover:text-accent transition-colors") %>
       <% end %>
 
       <%# Secondary: Add Manually %>
       <%= link_to new_account_path, 
-          class: "w-full flex items-center gap-4 p-4 bg-container border border-tertiary rounded-xl hover:bg-container-hover transition-all group",
+          class: "flex items-center gap-4 p-4 rounded-xl border border-tertiary bg-surface hover:bg-surface-hover transition-all group",
           data: { turbo_frame: :modal } do %>
-        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg group-hover:bg-gray-200 transition-colors">
+        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-surface-inset rounded-lg">
           <%= icon("plus", class: "text-secondary") %>
         </div>
-        <div class="text-left">
+        <div class="flex-1 text-left">
           <p class="font-medium text-primary">Add Account Manually</p>
-          <p class="text-xs text-secondary">Create bank, credit card, or loan account</p>
+          <p class="text-xs text-secondary mt-0.5">Create bank, credit card, or loan account</p>
         </div>
-        <%= icon("chevron-right", class: "ml-auto text-secondary group-hover:text-primary transition-colors") %>
+        <%= icon("chevron-right", class: "text-secondary group-hover:text-primary transition-colors") %>
       <% end %>
 
       <%# Tertiary: Chat with RUPI %>
       <%= link_to chats_path, 
-          class: "w-full flex items-center gap-4 p-4 bg-container border border-tertiary rounded-xl hover:bg-container-hover transition-all group" do %>
-        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gray-100 rounded-lg group-hover:bg-gray-200 transition-colors">
+          class: "flex items-center gap-4 p-4 rounded-xl border border-tertiary bg-surface hover:bg-surface-hover transition-all group" do %>
+        <div class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-surface-inset rounded-lg">
           <%= icon("message-circle", class: "text-secondary") %>
         </div>
-        <div class="text-left">
+        <div class="flex-1 text-left">
           <p class="font-medium text-primary">Chat with RUPI</p>
-          <p class="text-xs text-secondary">Ask AI about your finances</p>
+          <p class="text-xs text-secondary mt-0.5">Ask AI about your finances</p>
         </div>
-        <%= icon("chevron-right", class: "ml-auto text-secondary group-hover:text-primary transition-colors") %>
+        <%= icon("chevron-right", class: "text-secondary group-hover:text-primary transition-colors") %>
       <% end %>
     </div>
 
+    <%# Divider %>
+    <div class="relative my-6">
+      <div class="absolute inset-0 flex items-center">
+        <div class="w-full border-t border-tertiary"></div>
+      </div>
+      <div class="relative flex justify-center text-xs">
+        <span class="px-3 bg-container text-secondary">or explore with sample data</span>
+      </div>
+    </div>
+
+    <%# Load Sample Data Button %>
+    <%= button_to load_demo_data_path, 
+        method: :post,
+        class: "w-full flex items-center justify-center gap-2 p-3 rounded-xl border border-dashed border-tertiary text-secondary hover:text-primary hover:border-primary hover:bg-surface-hover transition-all",
+        data: { 
+          turbo_confirm: "This will create sample accounts and transactions to help you explore RUPI. You can delete them later. Continue?"
+        } do %>
+      <%= icon("database", size: "sm") %>
+      <span class="text-sm font-medium">Load Sample Data</span>
+    <% end %>
+
     <%# Supported Banks %>
-    <p class="text-xs text-secondary">
-      Supports HDFC, ICICI, SBI, Axis, Kotak, Jupiter, RBL & 15+ more banks
+    <p class="text-xs text-tertiary text-center mt-6">
+      Supports HDFC, ICICI, SBI, Axis, Kotak, Jupiter, RBL and 15+ more banks
     </p>
   </div>
 </div>

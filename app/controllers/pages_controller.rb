@@ -75,6 +75,18 @@ class PagesController < ApplicationController
     render layout: "public"
   end
 
+  def load_demo_data
+    result = DemoDataCreator.new(Current.family).call
+    
+    if result
+      flash[:notice] = "Sample data loaded successfully! Explore your new accounts."
+    else
+      flash[:alert] = "Could not load sample data. You may already have accounts."
+    end
+    
+    redirect_to root_path
+  end
+
   def redis_configuration_error
     render layout: "blank"
   end

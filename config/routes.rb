@@ -49,6 +49,7 @@ Rails.application.routes.draw do
   get "feedback", to: "pages#feedback"
   get "privacy", to: "pages#privacy"
   get "terms", to: "pages#terms"
+  post "load_demo_data", to: "pages#load_demo_data"
   patch "dashboard/preferences", to: "pages#update_preferences"
 
   resource :current_session, only: %i[update]
