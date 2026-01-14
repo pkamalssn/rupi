@@ -233,3 +233,91 @@
   pointer-events: none;
   position: absolute;
 }
+
+/* ============================================
+   MOBILE RESPONSIVE ENHANCEMENTS
+   ============================================ */
+
+/* Ensure minimum touch target size (48px as per accessibility guidelines) */
+@media (max-width: 768px) {
+  button,
+  a.btn,
+  [role="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Ensure readable text on mobile (16px prevents iOS zoom on input focus) */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+  
+  /* Chat input fixed at bottom for mobile */
+  .chat-input-mobile {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem;
+    background: var(--color-surface, white);
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 40;
+  }
+  
+  /* Add padding to bottom of scrollable content to account for fixed input */
+  .chat-messages-mobile {
+    padding-bottom: 100px !important;
+  }
+  
+  /* Larger tap targets for suggested questions */
+  .suggested-question-btn {
+    min-height: 48px;
+    padding: 12px 16px;
+  }
+  
+  /* Improve table readability on mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Stack navigation items on mobile */
+  .mobile-stack {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}
+
+/* Smooth scrolling for mobile */
+@media (pointer: coarse) {
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Hide scrollbars on mobile for cleaner look */
+@media (max-width: 768px) {
+  .hide-scrollbar-mobile {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .hide-scrollbar-mobile::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Improved focus states for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--rupi-green);
+  outline-offset: 2px;
+}
+
+/* Prevent content shifting when scrollbar appears/disappears */
+html {
+  scrollbar-gutter: stable;
+}
