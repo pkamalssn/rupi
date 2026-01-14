@@ -1,0 +1,160 @@
+<div class="min-h-screen bg-surface py-12 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-3xl mx-auto">
+    <%# Header %>
+    <div class="text-center mb-8">
+      <%= link_to root_path, class: "inline-block" do %>
+        <%= image_tag "rupi-logo.svg", alt: "RUPI", class: "h-12 mx-auto mb-4" rescue "" %>
+        <span class="text-2xl font-bold text-primary">RUPI</span>
+      <% end %>
+    </div>
+
+    <div class="bg-container rounded-xl shadow-border-xs p-6 sm:p-8 prose prose-sm max-w-none">
+      <h1 class="text-2xl font-bold text-primary mb-2">Terms of Service</h1>
+      <p class="text-secondary text-sm mb-8">Last updated: January 14, 2026</p>
+
+      <h2>1. Acceptance of Terms</h2>
+      <p>
+        By accessing or using RUPI ("Service"), you agree to be bound by these Terms of Service. 
+        If you do not agree to these terms, please do not use our Service.
+      </p>
+
+      <h2>2. Description of Service</h2>
+      <p>
+        RUPI is a personal finance management application that helps you track your income, 
+        expenses, accounts, and financial goals. The Service includes:
+      </p>
+      <ul>
+        <li>Bank statement import and parsing</li>
+        <li>Transaction categorization and tracking</li>
+        <li>Budget management</li>
+        <li>AI-powered financial insights</li>
+        <li>Reports and analytics</li>
+      </ul>
+
+      <h2>3. Account Responsibilities</h2>
+      <p>You are responsible for:</p>
+      <ul>
+        <li>Maintaining the security of your account credentials</li>
+        <li>All activities that occur under your account</li>
+        <li>Providing accurate information</li>
+        <li>Notifying us immediately of any unauthorized access</li>
+      </ul>
+
+      <h2>4. Acceptable Use</h2>
+      <p>You agree NOT to:</p>
+      <ul>
+        <li>Use the Service for any illegal purpose</li>
+        <li>Upload malicious files or attempt to compromise the Service</li>
+        <li>Attempt to access other users' data</li>
+        <li>Use automated tools to scrape or abuse the Service</li>
+        <li>Misrepresent your identity or affiliation</li>
+        <li>Violate any applicable laws or regulations</li>
+      </ul>
+
+      <h2>5. Financial Information Disclaimer</h2>
+      <p class="font-semibold text-primary">
+        RUPI IS NOT A FINANCIAL ADVISOR.
+      </p>
+      <p>
+        The information provided by RUPI, including AI-generated insights, is for informational 
+        purposes only and should not be considered financial advice. We recommend consulting 
+        with a qualified financial advisor before making financial decisions.
+      </p>
+      <ul>
+        <li>We do not guarantee the accuracy of parsed bank statement data</li>
+        <li>AI responses may contain errors or inaccuracies</li>
+        <li>You are responsible for verifying all financial information</li>
+        <li>We are not liable for financial decisions based on our Service</li>
+      </ul>
+
+      <h2>6. Intellectual Property</h2>
+      <ul>
+        <li>RUPI's core application (RUPI v3) is open source under the AGPLv3 license</li>
+        <li>The AI engine and bank statement parsers are proprietary</li>
+        <li>The RUPI name and logo are trademarks</li>
+        <li>Your data remains yours; we claim no ownership</li>
+      </ul>
+
+      <h2>7. Service Availability</h2>
+      <p>
+        We strive to maintain 99.9% uptime but do not guarantee uninterrupted access. 
+        The Service may be temporarily unavailable for:
+      </p>
+      <ul>
+        <li>Scheduled maintenance (we'll notify in advance when possible)</li>
+        <li>Emergency repairs</li>
+        <li>Factors beyond our control</li>
+      </ul>
+
+      <h2>8. Subscription & Payments</h2>
+      <p>If you subscribe to a paid plan:</p>
+      <ul>
+        <li>Payments are processed securely through third-party providers</li>
+        <li>Subscriptions auto-renew unless cancelled</li>
+        <li>Refunds are available within 7 days of purchase</li>
+        <li>We may change pricing with 30 days notice</li>
+      </ul>
+
+      <h2>9. Termination</h2>
+      <p>We may suspend or terminate your account if you:</p>
+      <ul>
+        <li>Violate these Terms of Service</li>
+        <li>Engage in fraudulent activity</li>
+        <li>Abuse the Service or its resources</li>
+      </ul>
+      <p>
+        You may delete your account at any time. Upon deletion, your data will be 
+        permanently removed within 30 days.
+      </p>
+
+      <h2>10. Limitation of Liability</h2>
+      <p>
+        TO THE MAXIMUM EXTENT PERMITTED BY LAW, RUPI SHALL NOT BE LIABLE FOR:
+      </p>
+      <ul>
+        <li>Any indirect, incidental, or consequential damages</li>
+        <li>Loss of data, profits, or business opportunities</li>
+        <li>Financial losses resulting from use of the Service</li>
+        <li>Errors in bank statement parsing or AI responses</li>
+      </ul>
+      <p>
+        Our total liability shall not exceed the amount you paid for the Service 
+        in the 12 months preceding the claim.
+      </p>
+
+      <h2>11. Indemnification</h2>
+      <p>
+        You agree to indemnify and hold RUPI harmless from any claims, damages, or 
+        expenses arising from your use of the Service or violation of these Terms.
+      </p>
+
+      <h2>12. Governing Law</h2>
+      <p>
+        These Terms are governed by the laws of India. Any disputes shall be resolved 
+        in the courts of Chennai, Tamil Nadu.
+      </p>
+
+      <h2>13. Changes to Terms</h2>
+      <p>
+        We may modify these Terms at any time. Significant changes will be communicated 
+        via email or in-app notification. Continued use after changes constitutes acceptance.
+      </p>
+
+      <h2>14. Contact</h2>
+      <p>For questions about these Terms, contact us at:</p>
+      <ul>
+        <li>Email: <a href="mailto:legal@rupiapp.in" class="text-accent">legal@rupiapp.in</a></li>
+      </ul>
+
+      <div class="mt-8 pt-6 border-t border-tertiary">
+        <p class="text-sm text-secondary">
+          By using RUPI, you acknowledge that you have read, understood, and agree to be bound by these Terms.
+        </p>
+        <div class="flex gap-4 mt-4">
+          <%= link_to "← Back to RUPI", root_path, class: "text-accent hover:underline" %>
+          <%= link_to "Privacy Policy", privacy_path, class: "text-accent hover:underline" %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
