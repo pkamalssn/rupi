@@ -47,6 +47,8 @@ Rails.application.routes.draw do
 
   get "changelog", to: "pages#changelog"
   get "feedback", to: "pages#feedback"
+  get "privacy", to: "pages#privacy"
+  get "terms", to: "pages#terms"
   patch "dashboard/preferences", to: "pages#update_preferences"
 
   resource :current_session, only: %i[update]

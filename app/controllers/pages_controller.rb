@@ -67,6 +67,14 @@ class PagesController < ApplicationController
     render layout: "settings"
   end
 
+  def privacy
+    render layout: "blank"
+  end
+
+  def terms
+    render layout: "blank"
+  end
+
   def redis_configuration_error
     render layout: "blank"
   end
