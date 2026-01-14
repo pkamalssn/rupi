@@ -64,15 +64,15 @@ class PagesController < ApplicationController
   end
 
   def feedback
-    render layout: "settings"
+    render layout: "public"
   end
 
   def privacy
-    render layout: "blank"
+    render layout: "public"
   end
 
   def terms
-    render layout: "blank"
+    render layout: "public"
   end
 
   def redis_configuration_error

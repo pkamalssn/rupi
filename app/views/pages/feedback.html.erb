@@ -1,21 +1,104 @@
-<%= content_for :page_title, "Feedback" %>
+<h1 class="text-2xl font-bold text-primary mb-2">Help & Support</h1>
+<p class="text-secondary text-sm mb-6">Get help with RUPI or share your feedback</p>
 
-<div class="bg-container shadow-border-xs rounded-xl p-4">
-  <h2 class="text-lg font-medium text-primary mb-1">Leave feedback</h2>
-  <p class="text-sm text-secondary mb-4">We'd love to hear from you! Share feature requests, bug reports, or just say hi.</p>
-  <div class="flex flex-col md:flex-row gap-4">
-    <%= link_to "mailto:pkamalssn@gmail.com?subject=RUPI%20Feedback", class: "w-full md:w-1/2 flex flex-col items-center p-4 border border-alpha-black-25 rounded-xl hover:bg-container-hover" do %>
-      <%= icon("mail", size: "lg", class: "text-primary mb-2") %>
-      <span class="text-sm font-medium text-primary text-center">Email</span>
-      <span class="text-xs text-secondary">pkamalssn@gmail.com</span>
+<div class="space-y-6">
+  <%# Contact Options %>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <%= link_to "mailto:pkamalssn@gmail.com?subject=RUPI%20Support", 
+        class: "flex flex-col items-center p-6 border border-tertiary rounded-xl hover:bg-container-hover transition-colors group" do %>
+      <div class="w-12 h-12 flex items-center justify-center bg-accent/10 rounded-full mb-3 group-hover:bg-accent/20 transition-colors">
+        <svg class="w-6 h-6 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+        </svg>
+      </div>
+      <span class="text-base font-medium text-primary">Email Support</span>
+      <span class="text-sm text-secondary mt-1">pkamalssn@gmail.com</span>
     <% end %>
 
-    <%= link_to "https://x.com/storyteller_kp", target: "_blank", rel: "noopener noreferrer", class: "w-full md:w-1/2 flex flex-col items-center p-4 border border-alpha-black-25 rounded-xl hover:bg-container-hover" do %>
-      <%= icon("twitter", size: "lg", class: "text-primary mb-2") %>
-      <span class="text-sm font-medium text-primary text-center">X (Twitter)</span>
-      <span class="text-xs text-secondary">@storyteller_kp</span>
+    <%= link_to "https://x.com/storyteller_kp", 
+        target: "_blank", 
+        rel: "noopener noreferrer", 
+        class: "flex flex-col items-center p-6 border border-tertiary rounded-xl hover:bg-container-hover transition-colors group" do %>
+      <div class="w-12 h-12 flex items-center justify-center bg-accent/10 rounded-full mb-3 group-hover:bg-accent/20 transition-colors">
+        <svg class="w-6 h-6 text-accent" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+        </svg>
+      </div>
+      <span class="text-base font-medium text-primary">X (Twitter)</span>
+      <span class="text-sm text-secondary mt-1">@storyteller_kp</span>
     <% end %>
   </div>
+
+  <%# FAQ Section %>
+  <div class="border-t border-tertiary pt-6">
+    <h2 class="text-lg font-semibold text-primary mb-4">Frequently Asked Questions</h2>
+    
+    <div class="space-y-4">
+      <details class="group">
+        <summary class="flex justify-between items-center cursor-pointer p-4 bg-container-hover rounded-lg">
+          <span class="font-medium text-primary">How do I import a bank statement?</span>
+          <svg class="w-5 h-5 text-secondary group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </summary>
+        <p class="p-4 text-secondary">
+          Click the "Upload Statement" button on your dashboard, then drag and drop your PDF or Excel file. 
+          RUPI supports statements from HDFC, ICICI, SBI, Axis, Kotak, and 15+ other Indian banks.
+        </p>
+      </details>
+
+      <details class="group">
+        <summary class="flex justify-between items-center cursor-pointer p-4 bg-container-hover rounded-lg">
+          <span class="font-medium text-primary">Which banks are supported?</span>
+          <svg class="w-5 h-5 text-secondary group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </summary>
+        <p class="p-4 text-secondary">
+          We support: HDFC, ICICI, SBI, Axis, Kotak Mahindra, RBL, Jupiter, Equitas, IDFC First, IndusInd, 
+          Federal Bank, Union Bank, PNB, Bank of Baroda, Canara Bank, Wise, HSBC, and more.
+        </p>
+      </details>
+
+      <details class="group">
+        <summary class="flex justify-between items-center cursor-pointer p-4 bg-container-hover rounded-lg">
+          <span class="font-medium text-primary">Is my data secure?</span>
+          <svg class="w-5 h-5 text-secondary group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </summary>
+        <p class="p-4 text-secondary">
+          Yes! Your data is encrypted at rest and in transit. We never ask for bank login credentials, 
+          and your uploaded statements are processed and then deleted. Read our 
+          <a href="/privacy" class="text-accent hover:underline">Privacy Policy</a> for more details.
+        </p>
+      </details>
+
+      <details class="group">
+        <summary class="flex justify-between items-center cursor-pointer p-4 bg-container-hover rounded-lg">
+          <span class="font-medium text-primary">How does the AI assistant work?</span>
+          <svg class="w-5 h-5 text-secondary group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </summary>
+        <p class="p-4 text-secondary">
+          RUPI AI is powered by Google Gemini. You can ask questions like "How did I spend last month?" 
+          or "What are my top expenses?" and get instant insights about your finances.
+        </p>
+      </details>
+
+      <details class="group">
+        <summary class="flex justify-between items-center cursor-pointer p-4 bg-container-hover rounded-lg">
+          <span class="font-medium text-primary">Is RUPI free to use?</span>
+          <svg class="w-5 h-5 text-secondary group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </summary>
+        <p class="p-4 text-secondary">
+          RUPI is currently in free BETA! You can use all features including AI chat, bank statement parsing, 
+          and financial tracking at no cost during the beta period.
+        </p>
+      </details>
+    </div>
+  </div>
 </div>
-
-
