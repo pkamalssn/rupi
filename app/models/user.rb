@@ -94,6 +94,16 @@ class User < ApplicationRecord
     end
   end
 
+  # Safe avatar URL that gracefully handles missing files
+  def safe_avatar_url(variant = :small)
+    return nil unless profile_image.attached?
+    
+    profile_image.variant(variant).url
+  rescue ActiveStorage::FileNotFoundError, ActiveStorage::InvariableError => e
+    Rails.logger.warn "[User] Avatar file not found for user #{id}: #{e.message}"
+    nil
+  end
+
   def show_ai_sidebar?
     show_ai_sidebar
   end

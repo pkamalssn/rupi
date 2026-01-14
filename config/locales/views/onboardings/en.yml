@@ -9,7 +9,7 @@ en:
       example: Example account
       locale: Language
       preview: Preview how data displays based on preferences.
-      submit: Complete
+      submit: Next
       subtitle: Let's configure your preferences.
       title: Configure your preferences
     profile:
@@ -22,7 +22,8 @@ en:
       subtitle: Let's complete your profile.
       title: Let's set up the basics
     show:
-      message: We’re really excited you’re here. In the next step we’ll ask you a
+      message:
+        We’re really excited you’re here. In the next step we’ll ask you a
         few questions to complete your profile and then get you all set up.
       setup: Set up account
       title: Meet %{product_name}

@@ -1,34 +1,41 @@
 <%= render "layouts/shared/htmldoc" do %>
-  <div class="min-h-screen bg-surface flex flex-col">
-    <%# Header %>
-    <header class="py-6 px-4 text-center border-b border-tertiary">
+  <div class="h-screen overflow-hidden bg-surface flex flex-col">
+    <%# Header - Fixed %>
+    <header class="shrink-0 py-6 px-4 text-center border-b border-tertiary bg-surface">
       <%= link_to root_path, class: "inline-block group" do %>
         <%= image_tag "logomark.svg", class: "w-16 h-16 mx-auto mb-2 rupi-logo" %>
-        <h1 class="text-2xl font-bold" style="background: linear-gradient(135deg, var(--rupi-green) 0%, var(--rupi-gold) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">RUPI</h1>
+        <h1 class="text-2xl font-bold" style="background: linear-gradient(135deg, var(--rupi-green) 0%, var(--rupi-gold) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">RUPI</h1>
       <% end %>
     </header>
 
-    <%# Main content - scrollable %>
-    <main class="flex-1 overflow-y-auto px-4 py-8">
-      <div class="max-w-3xl mx-auto">
-        <div class="bg-container rounded-xl shadow-border-xs p-6 md:p-8">
+    <%# Main content - SCROLLABLE %>
+    <main class="flex-1 overflow-y-auto">
+      <div class="max-w-3xl mx-auto px-4 py-8">
+        <%# Content Card %>
+        <div class="bg-container rounded-2xl shadow-lg border border-tertiary p-6 md:p-10">
           <%= yield %>
         </div>
         
-        <%# Back link %>
-        <div class="mt-6 text-center">
-          <%= link_to "← Back to RUPI", root_path, class: "text-accent hover:underline text-sm" %>
-          <span class="text-secondary mx-2">•</span>
-          <%= link_to "Privacy", privacy_path, class: "text-secondary hover:text-primary text-sm" %>
-          <span class="text-secondary mx-2">•</span>
-          <%= link_to "Terms", terms_path, class: "text-secondary hover:text-primary text-sm" %>
+        <%# Navigation links %>
+        <div class="mt-8 text-center space-x-4">
+          <%= link_to root_path, class: "inline-flex items-center gap-2 text-accent hover:underline text-sm font-medium" do %>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Back to RUPI
+          <% end %>
+          <span class="text-tertiary">|</span>
+          <%= link_to "Privacy", privacy_path, class: "text-secondary hover:text-accent text-sm transition-colors" %>
+          <span class="text-tertiary">|</span>
+          <%= link_to "Terms", terms_path, class: "text-secondary hover:text-accent text-sm transition-colors" %>
+          <span class="text-tertiary">|</span>
+          <%= link_to "Help", feedback_path, class: "text-secondary hover:text-accent text-sm transition-colors" %>
         </div>
+        
+        <%# Footer inside scroll area %>
+        <footer class="mt-12 pb-8 text-center">
+          <p class="text-xs text-secondary">&copy; <%= Date.current.year %> RUPI - Manage your Rupees easier! ✨</p>
+          <p class="text-xs text-tertiary mt-1">Made with ❤️ in India 🇮🇳</p>
+        </footer>
       </div>
     </main>
-
-    <%# Footer %>
-    <footer class="py-4 px-4 text-center text-xs text-secondary border-t border-tertiary">
-      <p>&copy; <%= Date.current.year %> RUPI - Manage your Rupees easier with RUPI! ✨</p>
-    </footer>
   </div>
 <% end %>
