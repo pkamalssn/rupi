@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.2.0] - 2026-01-14
+
+### Added - Pre-BETA Security & UX Release
+
+#### 🔒 Security Hardening
+
+- **Rate Limiting** - Rack::Attack protection on AI and parsing endpoints
+- **Input Validation** - Message length limits (2-5000 chars), chat history limits
+- **Graceful Error Handling** - User-friendly messages for AI timeouts and failures
+
+#### 🎨 UX Improvements
+
+- **Enhanced AI Chat Suggestions** - 6 India-specific example questions
+- **Improved Loading States** - Animated bouncing dots indicator
+- **Better Error Messages** - Context-aware error text with retry suggestions
+- **AI Response Copy Button** - One-click copy for AI insights
+- **Enhanced Onboarding** - Welcome screen with 3 action cards for new users
+
+#### 📱 Mobile Enhancements
+
+- **Touch Target Optimization** - Minimum 44px touch targets
+- **Input Zoom Prevention** - 16px font for mobile inputs
+- **Improved Scrolling** - Smooth touch scrolling on all views
+
+#### 📄 Legal Pages
+
+- **Privacy Policy** - Comprehensive privacy policy at `/privacy`
+- **Terms of Service** - Full terms at `/terms`
+- **Footer Links** - Help, Privacy, Terms accessible from footer
+- **User Menu Links** - Legal pages accessible from profile dropdown
+
+#### 🛠️ Developer Experience
+
+- **Demo Data Creator** - Service class for sample transactions
+- **CI/CD Pipeline** - Cloud Build auto-deploy on push to master
+
+### Changed
+
+- Enhanced clipboard controller with text value support
+- Footer now links to full legal pages instead of modals
+- Improved error response format with `retry_after` hints
+
+---
+
 ## [3.1.0] - 2026-01-14
 
 ### Added - Production Deployment
