@@ -25,22 +25,29 @@ class UsersController < ApplicationController
         redirect_to settings_profile_path, alert: error_message
       end
     else
-      was_ai_enabled = @user.ai_enabled
-      @user.update!(user_params.except(:redirect_to, :delete_profile_image))
-      @user.profile_image.purge if should_purge_profile_image?
+      begin
+        was_ai_enabled = @user.ai_enabled
+        @user.update!(user_params.except(:redirect_to, :delete_profile_image))
+        @user.profile_image.purge if should_purge_profile_image?
 
-      # Add a special notice if AI was just enabled or disabled
-      notice = if !was_ai_enabled && @user.ai_enabled
-        "AI Assistant has been enabled successfully."
-      elsif was_ai_enabled && !@user.ai_enabled
-        "AI Assistant has been disabled."
-      else
-        t(".success")
-      end
+        # Add a special notice if AI was just enabled or disabled
+        notice = if !was_ai_enabled && @user.ai_enabled
+          "AI Assistant has been enabled successfully."
+        elsif was_ai_enabled && !@user.ai_enabled
+          "AI Assistant has been disabled."
+        else
+          t(".success")
+        end
 
-      respond_to do |format|
-        format.html { handle_redirect(notice) }
-        format.json { head :ok }
+        respond_to do |format|
+          format.html { handle_redirect(notice) }
+          format.json { head :ok }
+        end
+      rescue ActiveStorage::Error, Google::Cloud::Error => e
+        Rails.logger.error "[UsersController] Storage error: #{e.class} - #{e.message}"
+        redirect_to settings_profile_path, alert: "Failed to upload profile image. Please try a smaller image or try again later."
+      rescue ActiveRecord::RecordInvalid => e
+        redirect_to settings_profile_path, alert: e.record.errors.full_messages.to_sentence
       end
     end
   end
