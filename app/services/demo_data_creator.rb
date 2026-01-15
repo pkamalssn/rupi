@@ -33,11 +33,40 @@ class DemoDataCreator
       create_credit_cards
       create_loans
       create_investments
+      
+      # Mark that this family has demo data loaded
+      @family.update!(demo_data_loaded: true) if @family.respond_to?(:demo_data_loaded=)
     end
 
     true
   rescue => e
     Rails.logger.error "[DemoDataCreator] Failed: #{e.message}"
+    Rails.logger.error e.backtrace.first(5).join("\n")
+    false
+  end
+
+  # Clear all demo data for a family
+  # This deletes ALL accounts, transactions, and categories created by demo data
+  def self.clear(family)
+    return false unless family.present?
+
+    ActiveRecord::Base.transaction do
+      # Delete all accounts (this also cascades to entries/transactions)
+      family.accounts.destroy_all
+      
+      # Delete demo categories (keep user-created ones if identifiable)
+      # For simplicity, we delete categories matching DEMO_CATEGORIES names
+      demo_category_names = DEMO_CATEGORIES.map { |c| c[:name] }
+      family.categories.where(name: demo_category_names).destroy_all
+      
+      # Clear demo data flag
+      family.update!(demo_data_loaded: false) if family.respond_to?(:demo_data_loaded=)
+    end
+
+    Rails.logger.info "[DemoDataCreator] Cleared demo data for family #{family.id}"
+    true
+  rescue => e
+    Rails.logger.error "[DemoDataCreator] Clear failed: #{e.message}"
     Rails.logger.error e.backtrace.first(5).join("\n")
     false
   end

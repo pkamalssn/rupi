@@ -10,6 +10,19 @@
     </div>
 
     <div class="flex gap-2">
+      <%# Clear Demo Data button - only show when user has accounts %>
+      <% if Current.family.accounts.where.not(status: :pending_deletion).exists? %>
+        <%= button_to clear_demo_data_path, 
+            method: :delete,
+            class: "inline-flex items-center gap-2 px-3 py-2 text-secondary hover:text-destructive border border-tertiary rounded-lg text-sm font-medium hidden lg:flex",
+            data: { 
+              turbo_confirm: "This will delete ALL accounts and transactions, including sample data. This cannot be undone. Continue?"
+            } do %>
+          <%= icon("trash-2", size: "sm") %>
+          <span>Clear All Data</span>
+        <% end %>
+      <% end %>
+
       <%# Bank Statement Upload Button %>
       <%= link_to new_bank_statement_path,
           class: "inline-flex items-center gap-2 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 text-sm font-medium hidden lg:flex",

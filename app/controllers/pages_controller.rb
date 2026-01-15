@@ -89,6 +89,18 @@ class PagesController < ApplicationController
     redirect_to root_path
   end
 
+  def clear_demo_data
+    result = DemoDataCreator.clear(Current.family)
+    
+    if result
+      flash[:notice] = "All demo data cleared! You can now start adding your own accounts."
+    else
+      flash[:alert] = "Could not clear demo data. Please try again."
+    end
+    
+    redirect_to root_path
+  end
+
   def redis_configuration_error
     render layout: "blank"
   end
