@@ -220,7 +220,7 @@ class DemoDataCreator
       name: name,
       amount: amount,
       currency: @currency,
-      entryable: Account::Transaction.create!(category: category),
+      entryable: ::Transaction.create!(category: category),
       marked_as_transfer: false
     )
   end

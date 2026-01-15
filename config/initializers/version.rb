@@ -4,7 +4,7 @@
 module Rupi
   class << self
     def version
-      "3.3.1"
+      "3.3.3"
     end
 
     def full_version
@@ -21,7 +21,7 @@ end
 module Sure
   class << self
     def version
-      Semver.new("3.3.1")
+      Semver.new("3.3.3")
     end
 
     def commit_sha
