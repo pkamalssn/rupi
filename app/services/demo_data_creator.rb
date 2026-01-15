@@ -24,7 +24,8 @@ class DemoDataCreator
   end
 
   def call
-    return false if @family.accounts.exists?
+    # Only check for active accounts (exclude soft-deleted pending_deletion)
+    return false if @family.accounts.where.not(status: :pending_deletion).exists?
 
     ActiveRecord::Base.transaction do
       create_categories
