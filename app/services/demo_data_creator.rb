@@ -187,7 +187,6 @@ class DemoDataCreator
       Depository.create!
     when "CreditCard"
       CreditCard.create!(
-        issuer: bank_name,
         annual_fee: 500,
         statement_day: 15,
         minimum_payment: [balance.abs * 0.05, 500].max.round,

@@ -106,12 +106,12 @@ class User < ApplicationRecord
       end
 
       # Use proxy path to avoid GCS signing issues (Service Account Key missing)
-      Rails.application.routes.url_helpers.rails_storage_proxy_path(target)
+      Rails.application.routes.url_helpers.rails_storage_proxy_path(target, only_path: true)
     rescue => e
       # If variant fails, try original proxy path
       begin 
         Rails.logger.warn "[User] Avatar generation failed: #{e.message}. Fallback to original."
-        Rails.application.routes.url_helpers.rails_storage_proxy_path(profile_image)
+        Rails.application.routes.url_helpers.rails_storage_proxy_path(profile_image, only_path: true)
       rescue => e2
         Rails.logger.error "[User] Avatar completely failed: #{e2.message}"
         nil
