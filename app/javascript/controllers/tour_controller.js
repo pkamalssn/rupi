@@ -233,8 +233,20 @@ export default class extends Controller {
     // Find target element
     const target = document.querySelector(step.element)
     
+    // Debug logging
+    console.log(`[Tour] Step ${this.currentStep + 1}: ${step.title}`, { target, step })
+
     // If element not found or not visible, skip to next step
-    if (!target || target.offsetParent === null) {
+    // Robust visibility check: handles fixed elements (offsetParent is null) and hidden elements
+    const isVisible = target && (
+      target.offsetWidth > 0 || 
+      target.offsetHeight > 0 || 
+      target.getClientRects().length > 0 ||
+      window.getComputedStyle(target).display !== 'none'
+    )
+
+    if (!isVisible) {
+      console.log(`[Tour] Skipping step ${this.currentStep + 1} - target not visible`)
       this.currentStep++
       return this.showStep()
     }
