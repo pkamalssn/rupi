@@ -35,6 +35,9 @@ Rails.application.configure do
 
   # Set Active Storage URL expiration time to 7 days
   config.active_storage.urls_expire_in = 7.days
+  
+  # Use proxy mode for Active Storage to avoid signing issues with ADC on Cloud Run without keyfile
+  config.active_storage.resolve_model_to_route = :rails_storage_proxy
 
   # Mount Action Cable outside main process or domain.
   # config.action_cable.mount_path = nil

@@ -25,7 +25,14 @@ class DemoDataCreator
 
   def call
     # Only check for active accounts (exclude soft-deleted pending_deletion)
-    return false if @family.accounts.where.not(status: :pending_deletion).exists?
+    existing_count = @family.accounts.where.not(status: :pending_deletion).count
+    
+    if existing_count > 0
+      Rails.logger.info "[DemoDataCreator] Skipped: Family #{@family.id} has #{existing_count} active accounts."
+      return false 
+    end
+
+    Rails.logger.info "[DemoDataCreator] Starting creation for family #{@family.id}"
 
     ActiveRecord::Base.transaction do
       create_categories
