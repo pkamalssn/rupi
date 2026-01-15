@@ -13,11 +13,19 @@ export default class extends Controller {
   // Tour steps configuration
   steps = [
     {
+      element: "[data-tour-target='welcome']",
+      title: "Welcome to RUPI",
+      content: "Let's take a quick tour of your new financial dashboard.",
+      position: "center"
+    },
+    {
       element: "[data-tour-target='sidebar']",
       title: "Navigation",
       content: "Access your Dashboard, Transactions, Reports, and Budgets from the sidebar.",
       position: "right"
     },
+
+
     {
       element: "[data-tour-target='netWorth']",
       title: "Net Worth",
@@ -301,6 +309,12 @@ export default class extends Controller {
       case "top":
         tooltip.style.left = `${rect.left}px`
         tooltip.style.top = `${rect.top - tooltip.offsetHeight - padding}px`
+        break
+      case "center":
+        const tooltipW = tooltip.offsetWidth || 300
+        const tooltipH = tooltip.offsetHeight || 200
+        tooltip.style.left = `${(window.innerWidth - tooltipW) / 2}px`
+        tooltip.style.top = `${(window.innerHeight - tooltipH) / 2}px`
         break
     }
 
