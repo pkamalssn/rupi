@@ -98,10 +98,23 @@ class User < ApplicationRecord
   def safe_avatar_url(variant = :small)
     return nil unless profile_image.attached?
     
-    profile_image.variant(variant).url
-  rescue ActiveStorage::FileNotFoundError, ActiveStorage::InvariableError => e
-    Rails.logger.warn "[User] Avatar file not found for user #{id}: #{e.message}"
-    nil
+    begin
+      # Try to get the variant url
+      if profile_image.variable?
+        profile_image.variant(variant).processed.url
+      else
+        profile_image.url
+      end
+    rescue => e
+      # If variant fails, try original
+      begin 
+        Rails.logger.warn "[User] Avatar variant failed: #{e.message}. Fallback to original."
+        profile_image.url 
+      rescue => e2
+        Rails.logger.error "[User] Avatar completely failed: #{e2.message}"
+        nil
+      end
+    end
   end
 
   def show_ai_sidebar?

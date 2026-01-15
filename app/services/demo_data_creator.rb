@@ -201,7 +201,7 @@ class DemoDataCreator
       currency: @currency,
       balance: balance,
       accountable: accountable,
-      is_active: true
+      status: :active
     )
   end
 
