@@ -188,9 +188,7 @@ class DemoDataCreator
     when "CreditCard"
       CreditCard.create!(
         annual_fee: 500,
-        statement_day: 15,
-        minimum_payment: [balance.abs * 0.05, 500].max.round,
-        due_day: 5
+        minimum_payment: [balance.abs * 0.05, 500].max.round
       )
     when "Loan"
       Loan.create!(
