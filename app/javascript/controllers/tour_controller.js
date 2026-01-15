@@ -233,8 +233,8 @@ export default class extends Controller {
     // Find target element
     const target = document.querySelector(step.element)
     
-    // If element not found, skip to next step
-    if (!target) {
+    // If element not found or not visible, skip to next step
+    if (!target || target.offsetParent === null) {
       this.currentStep++
       return this.showStep()
     }
