@@ -99,17 +99,19 @@ class User < ApplicationRecord
     return nil unless profile_image.attached?
     
     begin
-      # Try to get the variant url
-      if profile_image.variable?
-        profile_image.variant(variant).processed.url
+      target = if profile_image.variable?
+        profile_image.variant(variant).processed
       else
-        profile_image.url
+        profile_image
       end
+
+      # Use proxy path to avoid GCS signing issues (Service Account Key missing)
+      Rails.application.routes.url_helpers.rails_storage_proxy_path(target)
     rescue => e
-      # If variant fails, try original
+      # If variant fails, try original proxy path
       begin 
-        Rails.logger.warn "[User] Avatar variant failed: #{e.message}. Fallback to original."
-        profile_image.url 
+        Rails.logger.warn "[User] Avatar generation failed: #{e.message}. Fallback to original."
+        Rails.application.routes.url_helpers.rails_storage_proxy_path(profile_image)
       rescue => e2
         Rails.logger.error "[User] Avatar completely failed: #{e2.message}"
         nil
