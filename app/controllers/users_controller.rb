@@ -43,11 +43,12 @@ class UsersController < ApplicationController
           format.html { handle_redirect(notice) }
           format.json { head :ok }
         end
-      rescue ActiveStorage::Error, Google::Cloud::Error => e
-        Rails.logger.error "[UsersController] Storage error: #{e.class} - #{e.message}"
-        redirect_to settings_profile_path, alert: "Failed to upload profile image. Please try a smaller image or try again later."
       rescue ActiveRecord::RecordInvalid => e
         redirect_to settings_profile_path, alert: e.record.errors.full_messages.to_sentence
+      rescue => e
+        Rails.logger.error "[UsersController] Profile update error: #{e.class} - #{e.message}"
+        Rails.logger.error e.backtrace.first(5).join("\n")
+        redirect_to settings_profile_path, alert: "Failed to update profile. Please try again."
       end
     end
   end

@@ -176,7 +176,8 @@ class DemoDataCreator
   def create_account(name:, balance:, bank_name:, type:, loan_details: nil)
     accountable = case type
     when "Depository"
-      Depository.create!(bank_name: bank_name)
+      # Depository doesn't have bank_name column - account name includes bank info
+      Depository.create!
     when "CreditCard"
       CreditCard.create!(
         issuer: bank_name,

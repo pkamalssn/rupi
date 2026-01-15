@@ -68,9 +68,38 @@ export default class extends Controller {
   }
 
   start() {
+    // Check if at least one tour element exists
+    const hasElements = this.steps.some(step => document.querySelector(step.element))
+    
+    if (!hasElements) {
+      // Show a message that tour is available after adding accounts
+      this.showNoElementsMessage()
+      return
+    }
+    
     this.currentStep = 0
     this.createOverlay()
     this.showStep()
+  }
+
+  showNoElementsMessage() {
+    // Create a temporary notification
+    const notification = document.createElement("div")
+    notification.className = "fixed top-4 right-4 z-50 bg-container shadow-border-xs rounded-lg p-4 max-w-sm animate-in slide-in-from-top"
+    notification.innerHTML = `
+      <div class="flex items-start gap-3">
+        <span class="text-lg">💡</span>
+        <div>
+          <p class="font-medium text-primary text-sm">Tour Available After Setup</p>
+          <p class="text-secondary text-sm mt-1">Load sample data or add an account first, then try the tour again!</p>
+        </div>
+        <button onclick="this.parentElement.parentElement.remove()" class="text-secondary hover:text-primary ml-2">✕</button>
+      </div>
+    `
+    document.body.appendChild(notification)
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => notification.remove(), 5000)
   }
 
   createOverlay() {
