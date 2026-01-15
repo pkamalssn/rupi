@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.1] - 2026-01-15
+
+### Added
+
+- **Clear All Data Button** - One-click button to delete all demo/sample data
+- **DemoDataCreator.clear()** - Class method to remove all demo accounts and categories
+
+### Fixed
+
+- **Memory Limit** - Increased Cloud Run memory from 512MB to 1GB
+- **Sample Data Check** - Now excludes soft-deleted (pending_deletion) accounts
+- **Profile Upload Crash** - Added graceful error handling for storage failures
+- **Profile Upload Error Message** - Shows user-friendly message instead of 500 error
+
+---
+
 ## [3.3.0] - 2026-01-14
 
 ### Added - Onboarding & Security Release 🚀
