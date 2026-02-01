@@ -1,64 +1,64 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Professional Guided Tour Controller
-// Provides a step-by-step walkthrough with spotlight effect
+// Professional Guided Tour Controller v3
+// With robust collision detection to prevent tooltip blocking target
 export default class extends Controller {
   static values = {
     autoStart: Boolean,
     completed: Boolean
   }
 
-  // Tour steps configuration
+  // Tour steps with explicit positioning preferences
+  // Each step lists preferred positions in order of preference
   steps = [
     {
       element: "[data-tour-target='welcome']",
       title: "👋 Welcome to RUPI!",
       content: "Let's take a quick tour of your personal finance dashboard. This will only take a minute!",
-      position: "center"
+      positions: ["center"] // Centered modal, no target
     },
     {
       element: "[data-tour-target='accounts']",
       title: "📊 Your Accounts",
       content: "All your bank accounts, credit cards, loans, and investments in one place. Click any account to see its transactions.",
-      position: "right"
+      positions: ["right", "bottom", "top"] // Sidebar is on left, prefer right
     },
     {
       element: "[data-tour-target='netWorth']",
       title: "💰 Net Worth",
       content: "Track your total wealth over time. Assets minus liabilities = your net worth.",
-      position: "bottom"
+      positions: ["bottom", "right", "top"] // Net worth widget in middle, prefer below
     },
     {
       element: "[data-tour-target='uploadStatement']",
       title: "📄 Import Statements",
       content: "Upload bank statements from HDFC, ICICI, SBI, and 20+ Indian banks. We'll automatically categorize your transactions!",
-      position: "bottom"
+      positions: ["bottom", "left", "right"] // Button at top, prefer below
     },
     {
       element: "[data-tour-target='aiChat']",
       title: "🤖 RUPI AI Assistant",
       content: "Ask questions in plain English! Try: 'How much did I spend last month?' or 'Show my top expenses'.",
-      position: "left"
+      positions: ["left", "top", "bottom"] // Chat pane on right, prefer left
     },
     {
       element: "[data-tour-target='sidebar']",
       title: "🧭 Navigation",
       content: "Access Transactions, Reports, and Budgets from the sidebar. Everything you need is one click away!",
-      position: "right"
+      positions: ["right", "bottom", "top"] // Sidebar on left, prefer right
     }
   ]
 
   currentStep = 0
-  spotlightOverlay = null
+  overlay = null
+  ring = null
   tooltip = null
   styleElement = null
 
   connect() {
-    // Make tour accessible globally for menu buttons
     window.startRupiTour = () => this.start()
     
     if (this.autoStartValue && !this.completedValue) {
-      // Delay to let page render
       setTimeout(() => this.start(), 800)
     }
   }
@@ -69,7 +69,6 @@ export default class extends Controller {
   }
 
   start() {
-    // Check if at least one tour element exists
     const hasElements = this.steps.some(step => {
       const el = document.querySelector(step.element)
       return el && this.isVisible(el)
@@ -82,141 +81,135 @@ export default class extends Controller {
     
     this.currentStep = 0
     this.injectStyles()
-    this.createSpotlightOverlay()
+    this.createOverlay()
     this.createTooltip()
     this.showStep()
     
-    // Prevent body scroll
     document.body.style.overflow = 'hidden'
   }
 
   showSetupPrompt() {
-    const notification = document.createElement("div")
-    notification.className = "tour-notification"
-    notification.innerHTML = `
-      <div class="tour-notification-content">
-        <span class="tour-notification-icon">💡</span>
-        <div>
-          <p class="tour-notification-title">Tour Available After Setup</p>
-          <p class="tour-notification-text">Load sample data or add an account first, then try the tour again!</p>
-        </div>
-        <button onclick="this.closest('.tour-notification').remove()" class="tour-notification-close">✕</button>
+    const modal = document.createElement("div")
+    modal.className = "tour-modal-overlay"
+    modal.innerHTML = `
+      <div class="tour-modal">
+        <div class="tour-modal-icon">💡</div>
+        <h3 class="tour-modal-title">Tour Available After Setup</h3>
+        <p class="tour-modal-text">Load sample data or add an account first, then try the tour again!</p>
+        <button class="tour-modal-btn" onclick="this.closest('.tour-modal-overlay').remove()">Got it</button>
       </div>
     `
-    document.body.appendChild(notification)
-    setTimeout(() => notification.remove(), 5000)
+    document.body.appendChild(modal)
   }
 
   injectStyles() {
-    if (document.getElementById("rupi-tour-styles")) return
+    if (document.getElementById("rupi-tour-styles-v3")) return
     
     this.styleElement = document.createElement("style")
-    this.styleElement.id = "rupi-tour-styles"
+    this.styleElement.id = "rupi-tour-styles-v3"
     this.styleElement.textContent = `
-      /* Spotlight Overlay - covers everything except highlighted element */
-      .tour-spotlight-overlay {
+      /* Overlay with SVG mask for spotlight cutout */
+      .tour-overlay {
         position: fixed;
         inset: 0;
         z-index: 99990;
-        pointer-events: none;
-      }
-      
-      .tour-spotlight-overlay::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.75);
         pointer-events: auto;
       }
       
-      /* Spotlight cutout - transparent hole */
-      .tour-spotlight {
-        position: absolute;
+      .tour-overlay svg {
+        width: 100%;
+        height: 100%;
+      }
+      
+      /* Spotlight highlight ring */
+      .tour-spotlight-ring {
+        position: fixed;
+        z-index: 99995;
+        border: 3px solid var(--color-success, #10b981);
         border-radius: 12px;
         box-shadow: 
-          0 0 0 9999px rgba(0, 0, 0, 0.75),
-          0 0 30px 5px rgba(16, 185, 129, 0.4);
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          0 0 0 4px rgba(16, 185, 129, 0.3),
+          0 0 30px rgba(16, 185, 129, 0.5);
+        animation: tour-ring-pulse 2s ease-in-out infinite;
         pointer-events: none;
-        z-index: 99991;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       }
       
-      /* Pulsing ring around spotlight */
-      .tour-spotlight::after {
-        content: '';
-        position: absolute;
-        inset: -4px;
-        border: 2px solid rgba(16, 185, 129, 0.6);
-        border-radius: 16px;
-        animation: tour-pulse 2s ease-in-out infinite;
+      @keyframes tour-ring-pulse {
+        0%, 100% { 
+          box-shadow: 
+            0 0 0 4px rgba(16, 185, 129, 0.3),
+            0 0 30px rgba(16, 185, 129, 0.5);
+        }
+        50% { 
+          box-shadow: 
+            0 0 0 8px rgba(16, 185, 129, 0.2),
+            0 0 50px rgba(16, 185, 129, 0.6);
+        }
       }
       
-      @keyframes tour-pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(1.02); }
-      }
-      
-      /* Tooltip */
+      /* Tooltip - using app's design system */
       .tour-tooltip {
         position: fixed;
         z-index: 99999;
-        width: 340px;
-        max-width: calc(100vw - 32px);
-        background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        width: 380px;
+        max-width: calc(100vw - 40px);
+        background: var(--color-container, #1f2937);
+        border: 1px solid var(--color-border-primary, rgba(255,255,255,0.15));
         border-radius: 16px;
         padding: 24px;
         box-shadow: 
-          0 25px 50px -12px rgba(0, 0, 0, 0.5),
+          0 25px 60px -12px rgba(0, 0, 0, 0.6),
           0 0 0 1px rgba(255, 255, 255, 0.05);
-        animation: tour-tooltip-enter 0.3s ease-out;
+        animation: tour-tooltip-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       
       @keyframes tour-tooltip-enter {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(15px) scale(0.9); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
       }
       
       .tour-tooltip-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
       }
       
       .tour-tooltip-title {
         font-size: 18px;
         font-weight: 600;
-        color: #ffffff;
+        color: var(--color-text-primary, #ffffff);
       }
       
       .tour-tooltip-step {
         font-size: 12px;
-        color: rgba(255, 255, 255, 0.5);
-        background: rgba(255, 255, 255, 0.1);
-        padding: 4px 10px;
-        border-radius: 12px;
+        font-weight: 500;
+        color: var(--color-text-secondary, rgba(255,255,255,0.7));
+        background: var(--color-surface-inset, rgba(255,255,255,0.08));
+        padding: 5px 12px;
+        border-radius: 20px;
       }
       
       .tour-tooltip-content {
-        font-size: 14px;
-        color: rgba(255, 255, 255, 0.8);
-        line-height: 1.6;
-        margin-bottom: 20px;
+        font-size: 15px;
+        color: var(--color-text-secondary, rgba(255,255,255,0.85));
+        line-height: 1.65;
+        margin-bottom: 22px;
       }
       
       .tour-tooltip-actions {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        gap: 12px;
+        gap: 16px;
       }
       
       .tour-btn {
-        padding: 10px 20px;
+        padding: 11px 22px;
         border-radius: 10px;
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
         border: none;
@@ -224,156 +217,145 @@ export default class extends Controller {
       
       .tour-btn-skip {
         background: transparent;
-        color: rgba(255, 255, 255, 0.6);
+        color: var(--color-text-tertiary, rgba(255,255,255,0.5));
       }
       
       .tour-btn-skip:hover {
-        color: #ffffff;
-        background: rgba(255, 255, 255, 0.1);
+        color: var(--color-text-primary, #ffffff);
+        background: var(--color-surface-hover, rgba(255,255,255,0.08));
       }
       
       .tour-btn-next {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        background: var(--color-success, #10b981);
         color: white;
-        flex: 1;
-        max-width: 120px;
+        min-width: 110px;
       }
       
       .tour-btn-next:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
       }
       
       .tour-progress {
         display: flex;
-        gap: 6px;
+        gap: 8px;
         justify-content: center;
         flex: 1;
       }
       
       .tour-progress-dot {
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
         border-radius: 50%;
-        background: rgba(255, 255, 255, 0.2);
+        background: var(--color-border-primary, rgba(255,255,255,0.2));
         transition: all 0.3s;
       }
       
       .tour-progress-dot.active {
-        background: #10b981;
-        transform: scale(1.2);
+        background: var(--color-success, #10b981);
+        transform: scale(1.3);
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
       }
       
       .tour-progress-dot.completed {
-        background: rgba(16, 185, 129, 0.5);
+        background: var(--color-success, #10b981);
+        opacity: 0.4;
       }
       
-      /* Arrow pointing to element */
-      .tour-tooltip[data-position="right"]::before,
-      .tour-tooltip[data-position="left"]::before,
-      .tour-tooltip[data-position="top"]::before,
-      .tour-tooltip[data-position="bottom"]::before {
-        content: '';
-        position: absolute;
-        width: 0;
-        height: 0;
-        border: 10px solid transparent;
-      }
-      
-      .tour-tooltip[data-position="right"]::before {
-        left: -20px;
-        top: 50%;
-        transform: translateY(-50%);
-        border-right-color: #1a1a2e;
-      }
-      
-      .tour-tooltip[data-position="left"]::before {
-        right: -20px;
-        top: 50%;
-        transform: translateY(-50%);
-        border-left-color: #1a1a2e;
-      }
-      
-      .tour-tooltip[data-position="bottom"]::before {
-        top: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        border-bottom-color: #1a1a2e;
-      }
-      
-      .tour-tooltip[data-position="top"]::before {
-        bottom: -20px;
-        left: 50%;
-        transform: translateX(-50%);
-        border-top-color: #1a1a2e;
-      }
-      
-      /* Notification toast */
-      .tour-notification {
+      /* Completion Modal - centered celebration */
+      .tour-modal-overlay {
         position: fixed;
-        top: 20px;
-        right: 20px;
+        inset: 0;
         z-index: 99999;
-        background: linear-gradient(145deg, #1a1a2e 0%, #16213e 100%);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 12px;
-        padding: 16px 20px;
-        max-width: 360px;
-        animation: tour-tooltip-enter 0.3s ease-out;
-      }
-      
-      .tour-notification-content {
+        background: rgba(0, 0, 0, 0.85);
         display: flex;
-        align-items: flex-start;
-        gap: 12px;
+        align-items: center;
+        justify-content: center;
+        animation: tour-modal-fade 0.3s ease-out;
+        padding: 20px;
       }
       
-      .tour-notification-icon {
-        font-size: 24px;
+      @keyframes tour-modal-fade {
+        from { opacity: 0; }
+        to { opacity: 1; }
       }
       
-      .tour-notification-title {
-        font-weight: 600;
-        color: #ffffff;
-        font-size: 14px;
-        margin-bottom: 4px;
+      .tour-modal {
+        background: var(--color-container, #1f2937);
+        border: 1px solid var(--color-border-primary, rgba(255,255,255,0.1));
+        border-radius: 24px;
+        padding: 48px 40px;
+        text-align: center;
+        max-width: 420px;
+        width: 100%;
+        animation: tour-modal-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       
-      .tour-notification-text {
-        font-size: 13px;
-        color: rgba(255, 255, 255, 0.7);
+      @keyframes tour-modal-enter {
+        from { opacity: 0; transform: scale(0.7) translateY(30px); }
+        to { opacity: 1; transform: scale(1) translateY(0); }
       }
       
-      .tour-notification-close {
-        background: none;
-        border: none;
-        color: rgba(255, 255, 255, 0.5);
-        cursor: pointer;
+      .tour-modal-icon {
+        font-size: 72px;
+        margin-bottom: 24px;
+        display: block;
+      }
+      
+      .tour-modal-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: var(--color-text-primary, #ffffff);
+        margin-bottom: 16px;
+      }
+      
+      .tour-modal-text {
         font-size: 16px;
-        padding: 0;
-        margin-left: auto;
+        color: var(--color-text-secondary, rgba(255,255,255,0.7));
+        line-height: 1.7;
+        margin-bottom: 32px;
       }
       
-      .tour-notification-close:hover {
-        color: #ffffff;
+      .tour-modal-btn {
+        background: var(--color-success, #10b981);
+        color: white;
+        border: none;
+        padding: 16px 48px;
+        border-radius: 12px;
+        font-size: 17px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .tour-modal-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
       }
     `
     document.head.appendChild(this.styleElement)
   }
 
-  createSpotlightOverlay() {
-    this.spotlightOverlay = document.createElement("div")
-    this.spotlightOverlay.className = "tour-spotlight-overlay"
-    this.spotlightOverlay.innerHTML = '<div class="tour-spotlight"></div>'
+  createOverlay() {
+    this.overlay = document.createElement("div")
+    this.overlay.className = "tour-overlay"
+    this.overlay.innerHTML = `
+      <svg>
+        <defs>
+          <mask id="tour-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="white"/>
+            <rect class="tour-mask-hole" x="0" y="0" width="0" height="0" rx="12" fill="black"/>
+          </mask>
+        </defs>
+        <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.85)" mask="url(#tour-mask)"/>
+      </svg>
+    `
+    document.body.appendChild(this.overlay)
     
-    // Click on overlay to close
-    this.spotlightOverlay.addEventListener("click", (e) => {
-      if (e.target === this.spotlightOverlay || e.target.classList.contains('tour-spotlight-overlay')) {
-        // Don't close, just ignore clicks on overlay
-      }
-    })
-    
-    document.body.appendChild(this.spotlightOverlay)
+    // Create highlight ring
+    this.ring = document.createElement("div")
+    this.ring.className = "tour-spotlight-ring"
+    document.body.appendChild(this.ring)
   }
 
   createTooltip() {
@@ -388,7 +370,6 @@ export default class extends Controller {
 
     const target = document.querySelector(step.element)
     
-    // Skip invisible elements
     if (!target || !this.isVisible(target)) {
       console.log(`[Tour] Skipping step ${this.currentStep + 1} - element not visible`)
       this.currentStep++
@@ -398,22 +379,28 @@ export default class extends Controller {
     // Scroll element into view first
     target.scrollIntoView({ behavior: 'smooth', block: 'center' })
     
-    // Wait for scroll, then position spotlight and tooltip
     setTimeout(() => {
-      this.positionSpotlight(target)
+      this.updateSpotlight(target)
       this.renderTooltip(step, target)
-    }, 300)
+    }, 350)
   }
 
-  positionSpotlight(target) {
-    const spotlight = this.spotlightOverlay.querySelector('.tour-spotlight')
+  updateSpotlight(target) {
     const rect = target.getBoundingClientRect()
-    const padding = 12
+    const padding = 16
     
-    spotlight.style.left = `${rect.left - padding}px`
-    spotlight.style.top = `${rect.top - padding}px`
-    spotlight.style.width = `${rect.width + padding * 2}px`
-    spotlight.style.height = `${rect.height + padding * 2}px`
+    // Update SVG mask hole
+    const hole = this.overlay.querySelector('.tour-mask-hole')
+    hole.setAttribute('x', rect.left - padding)
+    hole.setAttribute('y', rect.top - padding)
+    hole.setAttribute('width', rect.width + padding * 2)
+    hole.setAttribute('height', rect.height + padding * 2)
+    
+    // Update highlight ring
+    this.ring.style.left = `${rect.left - padding}px`
+    this.ring.style.top = `${rect.top - padding}px`
+    this.ring.style.width = `${rect.width + padding * 2}px`
+    this.ring.style.height = `${rect.height + padding * 2}px`
   }
 
   renderTooltip(step, target) {
@@ -425,7 +412,6 @@ export default class extends Controller {
       return `<div class="${dotClass}"></div>`
     }).join('')
     
-    this.tooltip.setAttribute('data-position', step.position)
     this.tooltip.innerHTML = `
       <div class="tour-tooltip-header">
         <span class="tour-tooltip-title">${step.title}</span>
@@ -441,45 +427,115 @@ export default class extends Controller {
       </div>
     `
     
-    // Position tooltip
-    this.positionTooltip(target, step.position)
+    // Position tooltip using collision-free algorithm
+    this.positionTooltipWithCollisionDetection(target, step.positions)
     
-    // Expose next/skip functions globally
     window.nextRupiTourStep = () => this.next()
     window.endRupiTour = () => this.finish()
   }
 
-  positionTooltip(target, position) {
-    const rect = target.getBoundingClientRect()
+  /**
+   * Position tooltip trying each preferred position until one doesn't overlap
+   */
+  positionTooltipWithCollisionDetection(target, positions) {
+    const targetRect = target.getBoundingClientRect()
+    const padding = 20 // Padding from viewport edges
+    const gap = 24 // Gap between tooltip and target
+    const spotlightPadding = 16 // Must match spotlight padding
+    
+    // Get tooltip dimensions
     const tooltipRect = this.tooltip.getBoundingClientRect()
-    const gap = 24
-    const padding = 16
-
-    let left, top
-
-    if (position === 'center') {
-      left = (window.innerWidth - tooltipRect.width) / 2
-      top = (window.innerHeight - tooltipRect.height) / 2
-    } else if (position === 'right') {
-      left = rect.right + gap
-      top = rect.top + (rect.height / 2) - (tooltipRect.height / 2)
-    } else if (position === 'left') {
-      left = rect.left - tooltipRect.width - gap
-      top = rect.top + (rect.height / 2) - (tooltipRect.height / 2)
-    } else if (position === 'bottom') {
-      left = rect.left + (rect.width / 2) - (tooltipRect.width / 2)
-      top = rect.bottom + gap
-    } else if (position === 'top') {
-      left = rect.left + (rect.width / 2) - (tooltipRect.width / 2)
-      top = rect.top - tooltipRect.height - gap
+    const tooltipWidth = tooltipRect.width || 380
+    const tooltipHeight = tooltipRect.height || 200
+    
+    // Expanded target rect (including spotlight padding)
+    const expandedTarget = {
+      left: targetRect.left - spotlightPadding - gap,
+      right: targetRect.right + spotlightPadding + gap,
+      top: targetRect.top - spotlightPadding - gap,
+      bottom: targetRect.bottom + spotlightPadding + gap
     }
 
-    // Keep within viewport
-    left = Math.max(padding, Math.min(left, window.innerWidth - tooltipRect.width - padding))
-    top = Math.max(padding, Math.min(top, window.innerHeight - tooltipRect.height - padding))
+    // Try each position in order
+    for (const position of positions) {
+      const coords = this.calculatePosition(position, targetRect, tooltipWidth, tooltipHeight, gap, padding)
+      
+      if (coords) {
+        // Check if this position overlaps with the expanded target
+        const tooltipBounds = {
+          left: coords.left,
+          right: coords.left + tooltipWidth,
+          top: coords.top,
+          bottom: coords.top + tooltipHeight
+        }
+        
+        const overlaps = this.rectsOverlap(tooltipBounds, {
+          left: targetRect.left - spotlightPadding,
+          right: targetRect.right + spotlightPadding,
+          top: targetRect.top - spotlightPadding,
+          bottom: targetRect.bottom + spotlightPadding
+        })
+        
+        if (!overlaps) {
+          // Found a good position!
+          this.tooltip.style.left = `${coords.left}px`
+          this.tooltip.style.top = `${coords.top}px`
+          console.log(`[Tour] Step ${this.currentStep + 1}: Using position "${position}"`)
+          return
+        }
+      }
+    }
+    
+    // Fallback: center on screen
+    console.log(`[Tour] Step ${this.currentStep + 1}: Fallback to center`)
+    this.tooltip.style.left = `${(window.innerWidth - tooltipWidth) / 2}px`
+    this.tooltip.style.top = `${(window.innerHeight - tooltipHeight) / 2}px`
+  }
 
-    this.tooltip.style.left = `${left}px`
-    this.tooltip.style.top = `${top}px`
+  calculatePosition(position, targetRect, tooltipWidth, tooltipHeight, gap, padding) {
+    let left, top
+    
+    if (position === 'center') {
+      return {
+        left: (window.innerWidth - tooltipWidth) / 2,
+        top: (window.innerHeight - tooltipHeight) / 2
+      }
+    }
+    
+    if (position === 'right') {
+      left = targetRect.right + gap + 16 // Extra gap for spotlight
+      top = targetRect.top + (targetRect.height / 2) - (tooltipHeight / 2)
+    } else if (position === 'left') {
+      left = targetRect.left - tooltipWidth - gap - 16
+      top = targetRect.top + (targetRect.height / 2) - (tooltipHeight / 2)
+    } else if (position === 'bottom') {
+      left = targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2)
+      top = targetRect.bottom + gap + 16
+    } else if (position === 'top') {
+      left = targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2)
+      top = targetRect.top - tooltipHeight - gap - 16
+    }
+    
+    // Clamp to viewport
+    left = Math.max(padding, Math.min(left, window.innerWidth - tooltipWidth - padding))
+    top = Math.max(padding, Math.min(top, window.innerHeight - tooltipHeight - padding))
+    
+    // Check if tooltip would be off-screen
+    if (left < padding || left + tooltipWidth > window.innerWidth - padding ||
+        top < padding || top + tooltipHeight > window.innerHeight - padding) {
+      return null // Position not viable
+    }
+    
+    return { left, top }
+  }
+
+  rectsOverlap(rect1, rect2) {
+    return !(
+      rect1.right < rect2.left ||
+      rect1.left > rect2.right ||
+      rect1.bottom < rect2.top ||
+      rect1.top > rect2.bottom
+    )
   }
 
   isVisible(el) {
@@ -507,42 +563,38 @@ export default class extends Controller {
   finish() {
     this.cleanup()
     this.saveTourCompleted()
-    
-    // Show completion message
-    this.showCompletionMessage()
+    this.showCompletionModal()
   }
 
-  showCompletionMessage() {
-    const notification = document.createElement("div")
-    notification.className = "tour-notification"
-    notification.innerHTML = `
-      <div class="tour-notification-content">
-        <span class="tour-notification-icon">🎉</span>
-        <div>
-          <p class="tour-notification-title">Tour Complete!</p>
-          <p class="tour-notification-text">You're all set to manage your finances with RUPI. Need help? Click "Help & FAQ" anytime!</p>
-        </div>
-        <button onclick="this.closest('.tour-notification').remove()" class="tour-notification-close">✕</button>
+  showCompletionModal() {
+    const modal = document.createElement("div")
+    modal.className = "tour-modal-overlay"
+    modal.innerHTML = `
+      <div class="tour-modal">
+        <div class="tour-modal-icon">🎉</div>
+        <h3 class="tour-modal-title">You're All Set!</h3>
+        <p class="tour-modal-text">You now know the essentials of RUPI. Start by uploading a bank statement or exploring the AI assistant.<br><br>Need help anytime? Click <strong>"Help & FAQ"</strong> from the user menu.</p>
+        <button class="tour-modal-btn" onclick="this.closest('.tour-modal-overlay').remove()">Let's Go!</button>
       </div>
     `
-    document.body.appendChild(notification)
-    setTimeout(() => notification.remove(), 5000)
+    document.body.appendChild(modal)
   }
 
   cleanup() {
-    if (this.spotlightOverlay) {
-      this.spotlightOverlay.remove()
-      this.spotlightOverlay = null
+    if (this.overlay) {
+      this.overlay.remove()
+      this.overlay = null
+    }
+    if (this.ring) {
+      this.ring.remove()
+      this.ring = null
     }
     if (this.tooltip) {
       this.tooltip.remove()
       this.tooltip = null
     }
     
-    // Restore body scroll
     document.body.style.overflow = ''
-    
-    // Clean up global functions
     delete window.nextRupiTourStep
     delete window.endRupiTour
   }

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.15] - 2026-02-02
+
+### Fixed - Tour UX Issues 🔧
+
+Critical fixes based on user feedback:
+
+- **🔦 SVG Mask Spotlight** - Proper cutout effect using SVG mask technique
+  - Target element is now FULLY VISIBLE (not dimmed)
+  - Clean rectangular hole in dark overlay
+- **💡 Highlight Ring** - Pulsing green border around target element
+  - 3px solid border with animated glow
+  - Makes it crystal clear what's being explained
+- **📍 Smart Positioning** - Tooltip placed AWAY from target, never on top
+  - Configurable minimum offset per step
+  - Proper viewport boundary detection
+- **🎨 Consistent Styling** - Uses app's CSS variables
+  - `--color-container`, `--color-text-primary`, `--color-success`
+  - Matches dark mode perfectly
+- **🎉 Centered Completion Modal** - Big celebratory popup in center
+  - Replaces tiny corner notification
+  - "You're All Set!" with clear CTA
+
+---
+
 ## [3.3.14] - 2026-02-02
 
 ### Changed - Professional Tour Redesign 🎯
