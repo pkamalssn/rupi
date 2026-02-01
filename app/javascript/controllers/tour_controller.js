@@ -69,10 +69,18 @@ export default class extends Controller {
   tooltip = null
 
   connect() {
+    // Make tour accessible globally for menu buttons outside controller scope
+    window.startRupiTour = () => this.start()
+    
     if (this.autoStartValue && !this.completedValue) {
       // Small delay to let page render
       setTimeout(() => this.start(), 500)
     }
+  }
+
+  disconnect() {
+    // Clean up global reference
+    delete window.startRupiTour
   }
 
   start() {

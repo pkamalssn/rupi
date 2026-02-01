@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.13] - 2026-02-02
+
+### Fixed - Critical Bug Fixes
+
+- **🔴 Tour Feature** - Fixed "Take a Tour" completely broken
+  - Added `plain_button` variant to DS::MenuItem for Stimulus actions
+  - Made tour controller globally accessible via `window.startRupiTour()`
+  - Tour now works properly from user menu
+- **Category Badge Truncation** - Fixed category names like "Food & Di" cut off mid-word
+  - Added tooltip showing full category name on hover
+  - Increased category column width from 2 to 3 grid columns
+  - Reduced transaction name column from 8 to 7 columns
+
+### Removed
+
+- **AI Prompts** - Removed OpenAI prompt settings (RUPI uses Gemini, not OpenAI)
+- **LLM Usage** - Removed LLM usage tracking (was tracking OpenAI, not our Gemini sidecar)
+- **API Key** - Removed API key generation (not needed for SaaS, potential security exposure)
+
+---
+
 ## [3.3.12] - 2026-02-01
 
 ### Changed - UI Polish Release

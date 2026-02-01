@@ -1,5 +1,5 @@
 class DS::MenuItem < DesignSystemComponent
-  VARIANTS = %i[link button divider].freeze
+  VARIANTS = %i[link button plain_button divider].freeze
 
   attr_reader :variant, :text, :icon, :href, :method, :destructive, :confirm, :frame, :opts
 
@@ -19,6 +19,9 @@ class DS::MenuItem < DesignSystemComponent
   def wrapper(&block)
     if variant == :button
       button_to href, method: method, class: container_classes, **merged_opts, &block
+    elsif variant == :plain_button
+      # Plain button for Stimulus actions without form submission
+      content_tag(:button, type: "button", class: container_classes, **merged_opts, &block)
     elsif variant == :link
       link_to href, class: container_classes, **merged_opts, &block
     else
