@@ -245,9 +245,20 @@ export default class extends Controller {
         const textElement = d3.select(this);
         textElement.selectAll("tspan").remove();
 
-        // Node Name on the first line
-        textElement.append("tspan")
-          .text(d.name);
+        // Truncate long names to prevent overlap
+        const maxLength = 15;
+        const displayName = d.name.length > maxLength 
+          ? d.name.substring(0, maxLength) + "…" 
+          : d.name;
+
+        // Node Name on the first line (with truncation for long names)
+        const nameTspan = textElement.append("tspan")
+          .text(displayName);
+        
+        // Add title (tooltip) to parent text element for full name on hover
+        if (d.name.length > maxLength) {
+          textElement.append("title").text(d.name);
+        }
 
         // Financial details on the second line
         const financialDetailsTspan = textElement.append("tspan")

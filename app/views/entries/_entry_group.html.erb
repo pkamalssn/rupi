@@ -8,10 +8,9 @@
                           id: "selection_entry_#{date}",
                           data: { action: "bulk-select#toggleGroupSelection" } %>
 
-      <p class="uppercase space-x-1.5">
+      <p class="uppercase">
         <%= tag.span I18n.l(date, format: :long) %>
-        <span>·</span>
-        <%= tag.span entries.size %>
+        <span class="text-tertiary">(<%= pluralize(entries.size, "transaction") %>)</span>
       </p>
     </div>
 

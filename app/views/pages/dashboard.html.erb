@@ -9,49 +9,58 @@
       </p>
     </div>
 
-    <div class="flex gap-2">
-      <%# Clear Demo Data button - only show when user has accounts %>
-      <% if Current.family.accounts.where.not(status: :pending_deletion).exists? %>
-        <%= button_to clear_demo_data_path, 
-            method: :delete,
-            class: "inline-flex items-center gap-2 px-3 py-2 text-secondary hover:text-destructive border border-tertiary rounded-lg text-sm font-medium hidden lg:flex",
+    <div class="flex items-center gap-2">
+      <%# Desktop buttons - consistent height and alignment %>
+      <div class="hidden lg:flex items-center gap-2">
+        <%# Clear Demo Data button - only show when user has accounts %>
+        <% if Current.family.accounts.where.not(status: :pending_deletion).exists? %>
+          <%= render DS::Link.new(
+            variant: "outline",
+            icon: "trash-2",
+            text: "Clear All Data",
+            href: clear_demo_data_path,
             data: { 
+              turbo_method: "delete",
               turbo_confirm: "This will delete ALL accounts and transactions, including sample data. This cannot be undone. Continue?"
-            } do %>
-          <%= icon("trash-2", size: "sm") %>
-          <span>Clear All Data</span>
+            }
+          ) %>
         <% end %>
-      <% end %>
 
-      <%# Bank Statement Upload Button %>
-      <%= link_to new_bank_statement_path,
-          class: "inline-flex items-center gap-2 px-3 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 text-sm font-medium hidden lg:flex",
-          data: { tour_target: "uploadStatement" } do %>
-        <%= icon("upload", size: "sm") %>
-        <span>Upload Statement</span>
-      <% end %>
+        <%# Bank Statement Upload Button %>
+        <%= render DS::Link.new(
+          variant: "secondary",
+          icon: "upload",
+          text: "Upload Statement",
+          href: new_bank_statement_path,
+          data: { tour_target: "uploadStatement" }
+        ) %>
 
-      <%= render DS::Link.new(
-        icon: "plus",
-        text: t("pages.dashboard.new"),
-        href: new_account_path,
-        frame: :modal,
-        class: "hidden lg:inline-flex"
-      ) %>
+        <%# New Account Button %>
+        <%= render DS::Link.new(
+          variant: "primary",
+          icon: "plus",
+          text: "New Account",
+          href: new_account_path,
+          frame: :modal
+        ) %>
+      </div>
 
-      <%# Mobile: Statement upload icon button %>
-      <%= link_to new_bank_statement_path,
-          class: "lg:hidden inline-flex items-center justify-center w-10 h-10 bg-accent text-white rounded-full" do %>
-        <%= icon("upload", size: "sm") %>
-      <% end %>
-
-      <%= render DS::Link.new(
+      <%# Mobile buttons - icon only %>
+      <div class="flex lg:hidden items-center gap-2">
+        <%= render DS::Link.new(
+          variant: "icon",
+          icon: "upload",
+          href: new_bank_statement_path,
+          class: "rounded-full"
+        ) %>
+        <%= render DS::Link.new(
           variant: "icon-inverse",
           icon: "plus",
           href: new_account_path,
           frame: :modal,
-          class: "rounded-full lg:hidden"
+          class: "rounded-full"
         ) %>
+      </div>
     </div>
   </div>
 <% end %>
