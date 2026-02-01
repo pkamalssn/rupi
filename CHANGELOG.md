@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.14] - 2026-02-02
+
+### Changed - Professional Tour Redesign 🎯
+
+Complete rewrite of the guided tour system for a professional, polished experience:
+
+- **Spotlight Effect** - Dark overlay with transparent cutout highlighting the target element
+- **Pulsing Border** - Animated green glow around highlighted element draws attention
+- **Premium Tooltip Design** - Gradient background, smooth animations, arrow pointers
+- **Progress Indicators** - Visual dots showing current step and completion status
+- **Smooth Transitions** - 0.4s cubic-bezier animations between steps
+- **Completion Message** - Celebratory notification when tour finishes
+- **Auto-start After Demo Data** - Tour automatically starts after loading sample data
+- **Reduced Steps** - Condensed from 8 to 6 focused, essential steps
+
+### Technical
+
+- Spotlight uses `box-shadow: 0 0 0 9999px` technique for cutout effect
+- CSS animations for pulse and tooltip entry
+- Global functions (`window.startRupiTour`, `window.nextRupiTourStep`) for menu integration
+- Proper cleanup of DOM elements on tour end
+
+---
+
 ## [3.3.13] - 2026-02-02
 
 ### Fixed - Critical Bug Fixes
