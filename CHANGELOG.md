@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.12] - 2026-02-01
+
+### Changed - UI Polish Release
+
+- **AI Chat Input** - Removed non-functional placeholder buttons (+, ⌘, @, pointer)
+- **Dashboard Buttons** - Renamed "+New" to "New Account" for clarity
+- **Dashboard Button Alignment** - All action buttons now use consistent DS::Link components
+- **Sankey Chart Labels** - Long category names (>15 chars) now truncated with ellipsis
+- **Balance Sheet Progress Bars** - Modern horizontal bar style replaces ASCII vertical bars
+- **Transaction Date Headers** - Changed from "DATE · 1" to "DATE (1 transaction)"
+
+### Fixed
+
+- **Transaction Category Badges** - Added max-width constraint to prevent overlap with amount column
+
+---
+
+## [3.3.11] - 2026-02-01
+
+### Fixed
+
+- **Profile Page Crash** - Fixed "Service account credentials missing" error when viewing Profile Info
+  - Replaced direct `profile_image.url` call with `safe_avatar_url` proxy method
+
+---
+
+## [3.3.10] - 2026-02-01
+
+### Fixed
+
+- **Login Redirect Loop** - Fixed session not persisting after successful login
+  - Root cause: Stale `session_token` cookie from old sessions was being read instead of new session
+  - Fix: Clear old cookies before creating session + set both Rails session AND signed cookie
+
+---
+
 ## [3.3.1] - 2026-01-15
 
 ### Added
