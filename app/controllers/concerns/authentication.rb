@@ -35,8 +35,23 @@ module Authentication
     end
 
     def create_session_for(user)
+      # Clear any stale session data to prevent conflicts
+      cookies.delete(:session_token)
+      session.delete(:session_token)
+      
+      # Create new session
       user_session = user.sessions.create!
+      
+      # Store in both Rails session AND signed cookie for redundancy
       session[:session_token] = user_session.id
+      cookies.signed[:session_token] = {
+        value: user_session.id,
+        expires: 20.years.from_now,
+        httponly: true,
+        secure: Rails.env.production?,
+        same_site: :lax
+      }
+      
       user_session
     end
 
