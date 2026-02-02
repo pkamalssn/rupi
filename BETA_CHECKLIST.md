@@ -2,7 +2,7 @@
 
 > Last Updated: February 2, 2026
 > Target Version: v3.4.0 (Beta)
-> Current Version: v3.3.17
+> Current Version: v3.3.18
 
 ---
 
@@ -86,13 +86,13 @@
 
 ### 5. Export AI Chat 📥
 
-**Priority:** MEDIUM | **Effort:** 0.5 day | **Status:** NOT STARTED
+**Version:** v3.3.18 | **Status:** DONE ✅
 
-- [ ] Export as PDF button in chat menu
-- [ ] Export as Markdown button
-- [ ] Include all messages with timestamps
-- [ ] Format for readability
-- [ ] Download with meaningful filename
+- [x] Export as Markdown (downloads .md file)
+- [x] Export for Print/PDF (opens printer-friendly page)
+- [x] Include all messages with timestamps
+- [x] Professional formatting
+- [x] Meaningful filenames
 
 ### 6. Onboarding Checklist Widget 📝
 

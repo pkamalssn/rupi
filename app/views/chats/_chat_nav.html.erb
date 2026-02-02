@@ -30,6 +30,19 @@
         frame: dom_id(chat, "title")) %>
 
       <% menu.with_item(
+        variant: "link",
+        text: "Export as Markdown",
+        href: export_markdown_chat_path(chat),
+        icon: "download") %>
+      
+      <% menu.with_item(
+        variant: "link",
+        text: "Export for Print",
+        href: export_pdf_chat_path(chat),
+        icon: "printer",
+        target: "_blank") %>
+
+      <% menu.with_item(
         variant: "button",
         text: "Delete chat",
         href: chat_path(chat),
@@ -39,3 +52,4 @@
     <% end %>
   <% end %>
 </nav>
+

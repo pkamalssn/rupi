@@ -36,6 +36,8 @@ Rails.application.routes.draw do
 
     member do
       post :retry
+      get :export_markdown
+      get :export_pdf
     end
   end
 

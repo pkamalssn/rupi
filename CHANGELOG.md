@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.18] - 2026-02-02
+
+### Added - Export AI Chat 📥
+
+Users can now export their AI conversations for offline reference:
+
+**Export as Markdown:**
+
+- Downloads a `.md` file with full chat history
+- Includes timestamps for each message
+- Formatted with headers and separators
+- Includes chat ID for reference
+
+**Export for Print (PDF):**
+
+- Opens a printer-friendly page
+- One-click "Print / Save as PDF" button
+- Professional styling with RUPI branding
+- Messages formatted with proper page breaks
+- Back to Chat button for easy navigation
+
+**Access:**
+
+- Chat menu (three dots) → "Export as Markdown" or "Export for Print"
+
+---
+
 ## [3.3.17] - 2026-02-02
 
 ### 🚀 Beta Release Features
