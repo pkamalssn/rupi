@@ -23,10 +23,10 @@ export default class extends Controller {
       positions: ["right", "bottom"]
     },
     {
-      element: "#netWorthChart",
-      title: "💰 Net Worth Chart",
-      content: "Track your total wealth over time. This chart shows your assets minus liabilities = your net worth.",
-      positions: ["top", "bottom"]
+      element: "#net-worth-chart",
+      title: "💰 Net Worth",
+      content: "Track your total wealth over time. This shows your assets minus liabilities = your net worth.",
+      positions: ["left", "top", "bottom"]
     },
     {
       element: "[data-tour-target='uploadStatement']",

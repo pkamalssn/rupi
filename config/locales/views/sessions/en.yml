@@ -4,6 +4,7 @@ en:
     create:
       invalid_credentials: Invalid email or password.
       invalid_credentials_with_warning: "Invalid email or password. %{remaining} attempt(s) remaining before your account is locked."
+      user_not_found: "No account found with this email. Would you like to sign up?"
       account_locked: "Your account has been locked due to too many failed login attempts. Please try again in %{time}, or reset your password."
     destroy:
       logout_successful: You have signed out successfully.

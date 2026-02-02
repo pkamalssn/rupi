@@ -22,7 +22,8 @@ class SessionsController < ApplicationController
     
     # Check if account exists
     unless user
-      flash.now[:alert] = t(".invalid_credentials")
+      flash.now[:alert] = t(".user_not_found")
+      @show_signup_link = true
       render :new, status: :unprocessable_entity
       return
     end

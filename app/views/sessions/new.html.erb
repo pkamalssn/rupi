@@ -36,6 +36,13 @@
   <%= link_to t(".forgot_password"), new_password_reset_path, class: "font-medium text-sm text-primary hover:underline transition" %>
 </div>
 
+<% if @show_signup_link %>
+  <div class="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
+    <p class="text-sm text-secondary mb-2">New to RUPI?</p>
+    <%= link_to "Create an account →", new_registration_path, class: "font-semibold text-primary hover:underline" %>
+  </div>
+<% end %>
+
 <% if Rails.configuration.x.auth.oidc_enabled %>
   <div class="mt-6 text-center">
     <%= button_to "/auth/openid_connect", method: :post, form: { data: { turbo: false } }, class: "gsi-material-button" do %>
