@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.19] - 2026-02-02
+
+### Added - Guided Action Onboarding 🎓
+
+Complete interactive onboarding experience for new users:
+
+**8-Step Guided Journey:**
+
+1. **Welcome** - Introduction to RUPI
+2. **Load Sample Data** - Explore with zero risk
+3. **Explore Accounts** - Learn account navigation
+4. **Try AI Chat** - Interactive AI conversation
+5. **View Reports** - Discover spending insights
+6. **Upload Your Statement** - Guided real data import
+7. **Clear Sample Data** - Clean start option
+8. **Complete** - Celebration and next steps
+
+**Key Features:**
+
+- Progressive disclosure with progress bar
+- Action-required steps (not passive viewing)
+- Skippable for returning users
+- Restart option in Settings → Learning & Help
+- Visual tour still available separately
+- State persisted per user
+
+**UX Philosophy:**
+
+- Guide users to DO things, not just see them
+- Sample data first → Real data later
+- Each action builds confidence and muscle memory
+
+---
+
 ## [3.3.18] - 2026-02-02
 
 ### Added - Export AI Chat 📥

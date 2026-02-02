@@ -122,6 +122,37 @@
   </div>
 <% end %>
 
+<%= settings_section title: "Learning & Help" do %>
+  <div class="space-y-4">
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="w-full md:w-2/3">
+        <h3 class="font-medium text-primary">Restart Onboarding Tour</h3>
+        <p class="text-secondary text-sm">Go through the guided setup again to learn about all RUPI features.</p>
+      </div>
+
+      <%= render DS::Button.new(
+        text: "Restart Tour",
+        variant: "secondary",
+        href: "/onboarding/restart",
+        method: :post
+      ) %>
+    </div>
+    
+    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div class="w-full md:w-2/3">
+        <h3 class="font-medium text-primary">Start Visual Tour</h3>
+        <p class="text-secondary text-sm">Quick spotlight tour of the dashboard features.</p>
+      </div>
+
+      <%= render DS::Button.new(
+        text: "Start Tour",
+        variant: "outline",
+        href: root_path(start_tour: true)
+      ) %>
+    </div>
+  </div>
+<% end %>
+
 <%= settings_section title: t(".danger_zone_title") do %>
   <div class="space-y-4">
     <% if Current.user.admin? %>

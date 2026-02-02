@@ -2,7 +2,7 @@
 
 > Last Updated: February 2, 2026
 > Target Version: v3.4.0 (Beta)
-> Current Version: v3.3.18
+> Current Version: v3.3.19
 
 ---
 
@@ -94,15 +94,18 @@
 - [x] Professional formatting
 - [x] Meaningful filenames
 
-### 6. Onboarding Checklist Widget 📝
+### 6. Guided Action Onboarding 🎓
 
-**Priority:** MEDIUM | **Effort:** 1 day | **Status:** NOT STARTED
+**Version:** v3.3.19 | **Status:** DONE ✅
 
-- [ ] Persistent checklist in sidebar/floating
-- [ ] Track: Account created, Statement uploaded, AI used, Budget created
-- [ ] Progress percentage
-- [ ] Dismiss option after completion
-- [ ] Save state in user preferences
+- [x] 8-step interactive guided journey
+- [x] Sample data loading as first step
+- [x] Action-required progression (not passive)
+- [x] Progress bar with step counter
+- [x] Skip option for returning users
+- [x] Restart from Settings → Learning & Help
+- [x] State persisted in user preferences
+- [x] Visual tour still available separately
 
 ---
 

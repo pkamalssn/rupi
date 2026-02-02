@@ -54,6 +54,10 @@ Rails.application.routes.draw do
   post "load_demo_data", to: "pages#load_demo_data"
   delete "clear_demo_data", to: "pages#clear_demo_data"
   patch "dashboard/preferences", to: "pages#update_preferences"
+  
+  # Guided onboarding
+  post "onboarding/dismiss", to: "onboardings#dismiss"
+  post "onboarding/restart", to: "onboardings#restart"
 
   resource :current_session, only: %i[update]
 

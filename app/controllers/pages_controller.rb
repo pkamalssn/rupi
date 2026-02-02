@@ -19,6 +19,9 @@ class PagesController < ApplicationController
     @dashboard_sections = build_dashboard_sections
 
     @breadcrumbs = [ [ "Home", root_path ], [ "Dashboard", nil ] ]
+    
+    # Allow starting visual tour from settings page
+    session[:start_tour] = true if params[:start_tour].present?
   end
 
   def update_preferences

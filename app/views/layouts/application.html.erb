@@ -21,15 +21,21 @@
 
 <%= render "layouts/shared/htmldoc" do %>
   <% start_tour = session.delete(:start_tour) %>
+  <% has_accounts = Current.family.accounts.any? %>
+  <% tour_completed = Current.user.preferences&.dig('tour_completed') == true %>
+  <% guided_onboarding_completed = Current.user.preferences&.dig('guided_onboarding_completed') == true %>
   <div
     class="flex flex-col lg:flex-row h-full bg-surface"
-    data-controller="app-layout tour"
+    data-controller="app-layout tour guided-onboarding"
     data-tour-target="welcome"
     data-app-layout-expanded-sidebar-class="<%= expanded_sidebar_class %>"
     data-app-layout-collapsed-sidebar-class="<%= collapsed_sidebar_class %>"
     data-app-layout-user-id-value="<%= Current.user.id %>"
     data-tour-auto-start-value="<%= start_tour ? 'true' : 'false' %>"
-    data-tour-completed-value="<%= Current.user.preferences&.dig('tour_completed') ? 'true' : 'false' %>">
+    data-tour-completed-value="<%= tour_completed ? 'true' : 'false' %>"
+    data-has-accounts="<%= has_accounts %>"
+    data-tour-completed="<%= tour_completed %>"
+    data-guided-onboarding-dismissed-value="<%= guided_onboarding_completed ? 'true' : 'false' %>">
     <div
       class="hidden fixed inset-0 bg-surface z-20 h-full w-full pt-[calc(env(safe-area-inset-top)+0.75rem)] pr-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] pl-3 overflow-y-auto transition-all duration-300"
       data-app-layout-target="mobileSidebar">
