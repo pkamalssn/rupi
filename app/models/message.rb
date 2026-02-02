@@ -2,6 +2,23 @@ class Message < ApplicationRecord
   belongs_to :chat
   has_many :tool_calls, dependent: :destroy
 
+  # Encrypt message content at rest (contains sensitive financial data)
+  # Uses same pattern as EnableBankingItem - only encrypt if keys are available
+  def self.encryption_ready?
+    creds_ready = Rails.application.credentials.active_record_encryption.present?
+    env_ready = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"].present? &&
+                ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"].present? &&
+                ENV["ACTIVE_RECORD_ENCRYPTION_KEY_DERIVATION_SALT"].present?
+    # Also check if we're in self-hosted mode (auto-generates keys)
+    self_hosted = Rails.application.config.respond_to?(:app_mode) && 
+                  Rails.application.config.app_mode.self_hosted?
+    creds_ready || env_ready || self_hosted
+  end
+
+  if encryption_ready?
+    encrypts :content
+  end
+
   enum :status, {
     pending: "pending",
     complete: "complete",

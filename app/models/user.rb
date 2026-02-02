@@ -135,6 +135,70 @@ class User < ApplicationRecord
     ai_enabled && ai_available?
   end
 
+  # ============================================
+  # AI Rate Limiting (Beta: 50 messages/day)
+  # ============================================
+  AI_DAILY_LIMIT = 50         # Messages per day
+  AI_COOLDOWN_SECONDS = 5     # Seconds between messages
+
+  def ai_rate_limit_status
+    today = Date.current.to_s
+    ai_prefs = preferences["ai_rate_limit"] || {}
+    current_date = ai_prefs["date"]
+    
+    # Reset counter if it's a new day
+    if current_date != today
+      return { count: 0, limit: AI_DAILY_LIMIT, remaining: AI_DAILY_LIMIT, last_message_at: nil }
+    end
+    
+    count = ai_prefs["count"] || 0
+    last_message_at = ai_prefs["last_message_at"] ? Time.parse(ai_prefs["last_message_at"]) : nil
+    
+    {
+      count: count,
+      limit: AI_DAILY_LIMIT,
+      remaining: [AI_DAILY_LIMIT - count, 0].max,
+      last_message_at: last_message_at,
+      resets_at: Date.tomorrow.beginning_of_day.in_time_zone("Asia/Kolkata")
+    }
+  end
+
+  def can_send_ai_message?
+    status = ai_rate_limit_status
+    status[:remaining] > 0
+  end
+
+  def ai_cooldown_active?
+    status = ai_rate_limit_status
+    return false unless status[:last_message_at]
+    
+    Time.current - status[:last_message_at] < AI_COOLDOWN_SECONDS
+  end
+
+  def ai_cooldown_remaining
+    status = ai_rate_limit_status
+    return 0 unless status[:last_message_at]
+    
+    remaining = AI_COOLDOWN_SECONDS - (Time.current - status[:last_message_at])
+    [remaining.ceil, 0].max
+  end
+
+  def record_ai_message!
+    today = Date.current.to_s
+    ai_prefs = preferences["ai_rate_limit"] || {}
+    
+    # Reset if new day
+    if ai_prefs["date"] != today
+      ai_prefs = { "date" => today, "count" => 0 }
+    end
+    
+    ai_prefs["count"] = (ai_prefs["count"] || 0) + 1
+    ai_prefs["last_message_at"] = Time.current.iso8601
+    
+    update!(preferences: preferences.merge("ai_rate_limit" => ai_prefs))
+  end
+
+
   # Deactivation
   validate :can_deactivate, if: -> { active_changed? && !active }
   after_update_commit :purge_later, if: -> { saved_change_to_active?(from: true, to: false) }

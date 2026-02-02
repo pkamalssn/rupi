@@ -20,5 +20,20 @@
     </div>
   <% end %>
 
-  <p class="text-xs text-secondary">AI responses are informational only and are not financial advice.</p>
+  <div class="flex items-center justify-between text-xs text-secondary">
+    <p>AI responses are informational only and are not financial advice.</p>
+    <% if Current.user.present? %>
+      <% status = Current.user.ai_rate_limit_status %>
+      <% if status[:remaining] == 0 %>
+        <span class="text-red-400" title="Resets at <%= status[:resets_at].strftime('%I:%M %p IST') %>">
+          Daily limit reached
+        </span>
+      <% elsif status[:remaining] <= 10 %>
+        <span class="text-yellow-400" title="<%= status[:remaining] %> messages remaining today">
+          <%= status[:remaining] %>/<%= status[:limit] %> left
+        </span>
+      <% end %>
+    <% end %>
+  </div>
 </div>
+

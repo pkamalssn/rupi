@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.17] - 2026-02-02
+
+### 🚀 Beta Release Features
+
+#### AI Rate Limiting 🚦
+
+Implemented sustainable usage limits to protect API costs during Beta:
+
+- **Daily Limit**: 50 messages per user per day
+- **Cooldown**: 5 seconds between messages (spam prevention)
+- **Reset**: Automatic daily reset at midnight IST
+- **UI Indicator**: Shows remaining messages when < 10 left
+- **Error Messages**: User-friendly alerts with reset time
+
+**Technical Details:**
+
+- Uses existing `preferences` JSONB field (no migration needed)
+- Rate tracking: `User#ai_rate_limit_status`, `#can_send_ai_message?`
+- Controller enforcement in `MessagesController#check_rate_limit`
+
+#### AI Chat Encryption 🔐
+
+Enhanced privacy for user's financial conversations:
+
+- **Encryption at Rest**: All AI message content is now encrypted
+- **Rails 7 Encryption**: Uses built-in `encrypts :content`
+- **Auto-Detection**: Only enables if encryption keys are configured
+- **Pattern**: Follows same approach as EnableBankingItem
+
+#### Tour Spotlight Fix 🎯
+
+Final fix for the onboarding tour spotlight:
+
+- **4-Panel Overlay**: Uses 4 overlay divs instead of SVG mask
+- **Reliable Cutout**: Target element is now truly visible (not dimmed)
+- **Better Positioning**: Improved collision detection for tooltip placement
+
+---
+
 ## [3.3.16] - 2026-02-02
 
 ### Fixed - Tour Design System Integration 🎨
