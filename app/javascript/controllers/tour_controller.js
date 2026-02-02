@@ -9,6 +9,7 @@ export default class extends Controller {
   }
 
   // Tour steps - carefully matched to actual DOM elements
+  // v7: Fixed selectors for Net Worth and Upload Statement
   steps = [
     {
       element: "[data-tour-target='welcome']",
@@ -23,16 +24,16 @@ export default class extends Controller {
       positions: ["right", "bottom"]
     },
     {
-      element: "#net-worth-chart",
+      element: "[data-section-key='net_worth_chart']",
       title: "💰 Net Worth",
       content: "Track your total wealth over time. This shows your assets minus liabilities = your net worth.",
-      positions: ["left", "top", "bottom"]
+      positions: ["left", "bottom", "top"]
     },
     {
       element: "[data-tour-target='uploadStatement']",
       title: "📄 Import Statements",
       content: "Upload bank statements from HDFC, ICICI, SBI, and 20+ Indian banks. We'll automatically categorize your transactions!",
-      positions: ["bottom-start", "bottom"]
+      positions: ["bottom", "bottom-start", "left"]
     },
     {
       element: "[data-tour-target='aiChat']",
@@ -380,11 +381,17 @@ export default class extends Controller {
 
     const target = document.querySelector(step.element)
     
+    console.log(`[Tour] Step ${this.currentStep + 1}: Looking for "${step.element}"`)
+    console.log(`[Tour] Target found:`, target)
+    
     if (!target || !this.isVisible(target)) {
       console.log(`[Tour] Skipping step ${this.currentStep + 1} - element not visible: ${step.element}`)
       this.currentStep++
       return this.showStep()
     }
+    
+    const rect = target.getBoundingClientRect()
+    console.log(`[Tour] Target rect:`, { left: rect.left, top: rect.top, width: rect.width, height: rect.height })
 
     // For center position, cover entire screen
     if (step.positions[0] === 'center') {
