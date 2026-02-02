@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Professional Guided Tour Controller v3
-// With robust collision detection to prevent tooltip blocking target
+// Professional Guided Tour Controller v4
+// Uses RUPI's actual design system colors for perfect integration
 export default class extends Controller {
   static values = {
     autoStart: Boolean,
@@ -9,43 +9,42 @@ export default class extends Controller {
   }
 
   // Tour steps with explicit positioning preferences
-  // Each step lists preferred positions in order of preference
   steps = [
     {
       element: "[data-tour-target='welcome']",
       title: "👋 Welcome to RUPI!",
       content: "Let's take a quick tour of your personal finance dashboard. This will only take a minute!",
-      positions: ["center"] // Centered modal, no target
+      positions: ["center"]
     },
     {
       element: "[data-tour-target='accounts']",
       title: "📊 Your Accounts",
       content: "All your bank accounts, credit cards, loans, and investments in one place. Click any account to see its transactions.",
-      positions: ["right", "bottom", "top"] // Sidebar is on left, prefer right
+      positions: ["right", "bottom", "top"]
     },
     {
       element: "[data-tour-target='netWorth']",
       title: "💰 Net Worth",
       content: "Track your total wealth over time. Assets minus liabilities = your net worth.",
-      positions: ["bottom", "right", "top"] // Net worth widget in middle, prefer below
+      positions: ["right", "bottom", "left"]
     },
     {
       element: "[data-tour-target='uploadStatement']",
       title: "📄 Import Statements",
       content: "Upload bank statements from HDFC, ICICI, SBI, and 20+ Indian banks. We'll automatically categorize your transactions!",
-      positions: ["bottom", "left", "right"] // Button at top, prefer below
+      positions: ["bottom", "left", "right"]
     },
     {
       element: "[data-tour-target='aiChat']",
       title: "🤖 RUPI AI Assistant",
       content: "Ask questions in plain English! Try: 'How much did I spend last month?' or 'Show my top expenses'.",
-      positions: ["left", "top", "bottom"] // Chat pane on right, prefer left
+      positions: ["left", "top", "bottom"]
     },
     {
       element: "[data-tour-target='sidebar']",
       title: "🧭 Navigation",
       content: "Access Transactions, Reports, and Budgets from the sidebar. Everything you need is one click away!",
-      positions: ["right", "bottom", "top"] // Sidebar on left, prefer right
+      positions: ["right", "bottom", "top"]
     }
   ]
 
@@ -54,6 +53,21 @@ export default class extends Controller {
   ring = null
   tooltip = null
   styleElement = null
+  
+  // RUPI Design System Colors (from maybe-design-system.css)
+  colors = {
+    // Dark mode (primary)
+    surface: '#0B0B0B',        // bg-surface dark
+    container: '#171717',       // bg-container dark (gray-900)
+    containerHover: '#242424',  // bg-container-hover dark (gray-800)
+    text: '#FFFFFF',           // text-primary dark
+    textSecondary: 'rgba(255,255,255,0.7)',
+    textTertiary: 'rgba(255,255,255,0.5)',
+    border: 'rgba(255,255,255,0.1)',
+    success: '#12B76A',        // green-500
+    successHover: '#10A861',   // green-600
+    overlay: 'rgba(11,11,11,0.92)' // Near-black overlay
+  }
 
   connect() {
     window.startRupiTour = () => this.start()
@@ -90,122 +104,124 @@ export default class extends Controller {
 
   showSetupPrompt() {
     const modal = document.createElement("div")
-    modal.className = "tour-modal-overlay"
+    modal.className = "rupi-tour-modal-overlay"
     modal.innerHTML = `
-      <div class="tour-modal">
-        <div class="tour-modal-icon">💡</div>
-        <h3 class="tour-modal-title">Tour Available After Setup</h3>
-        <p class="tour-modal-text">Load sample data or add an account first, then try the tour again!</p>
-        <button class="tour-modal-btn" onclick="this.closest('.tour-modal-overlay').remove()">Got it</button>
+      <div class="rupi-tour-modal">
+        <div class="rupi-tour-modal-icon">💡</div>
+        <h3 class="rupi-tour-modal-title">Tour Available After Setup</h3>
+        <p class="rupi-tour-modal-text">Load sample data or add an account first, then try the tour again!</p>
+        <button class="rupi-tour-modal-btn" onclick="this.closest('.rupi-tour-modal-overlay').remove()">Got it</button>
       </div>
     `
     document.body.appendChild(modal)
   }
 
   injectStyles() {
-    if (document.getElementById("rupi-tour-styles-v3")) return
+    // Remove old styles first
+    const oldStyles = document.getElementById("rupi-tour-styles-v4")
+    if (oldStyles) oldStyles.remove()
     
     this.styleElement = document.createElement("style")
-    this.styleElement.id = "rupi-tour-styles-v3"
+    this.styleElement.id = "rupi-tour-styles-v4"
     this.styleElement.textContent = `
-      /* Overlay with SVG mask for spotlight cutout */
-      .tour-overlay {
+      /* Dark Overlay - always visible */
+      .rupi-tour-overlay {
         position: fixed;
         inset: 0;
         z-index: 99990;
+        background: ${this.colors.overlay};
         pointer-events: auto;
       }
       
-      .tour-overlay svg {
-        width: 100%;
-        height: 100%;
-      }
-      
-      /* Spotlight highlight ring */
-      .tour-spotlight-ring {
+      /* Spotlight highlight ring around target */
+      .rupi-tour-spotlight {
         position: fixed;
         z-index: 99995;
-        border: 3px solid var(--color-success, #10b981);
+        border: 3px solid ${this.colors.success};
         border-radius: 12px;
         box-shadow: 
-          0 0 0 4px rgba(16, 185, 129, 0.3),
-          0 0 30px rgba(16, 185, 129, 0.5);
-        animation: tour-ring-pulse 2s ease-in-out infinite;
+          0 0 0 4px rgba(18, 183, 106, 0.25),
+          0 0 40px rgba(18, 183, 106, 0.4),
+          inset 0 0 0 2000px transparent;
+        animation: rupi-spotlight-pulse 2s ease-in-out infinite;
         pointer-events: none;
-        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        background: transparent;
       }
       
-      @keyframes tour-ring-pulse {
+      @keyframes rupi-spotlight-pulse {
         0%, 100% { 
           box-shadow: 
-            0 0 0 4px rgba(16, 185, 129, 0.3),
-            0 0 30px rgba(16, 185, 129, 0.5);
+            0 0 0 4px rgba(18, 183, 106, 0.25),
+            0 0 40px rgba(18, 183, 106, 0.4);
         }
         50% { 
           box-shadow: 
-            0 0 0 8px rgba(16, 185, 129, 0.2),
-            0 0 50px rgba(16, 185, 129, 0.6);
+            0 0 0 8px rgba(18, 183, 106, 0.15),
+            0 0 60px rgba(18, 183, 106, 0.5);
         }
       }
       
-      /* Tooltip - using app's design system */
-      .tour-tooltip {
+      /* Tooltip - matching RUPI dark theme exactly */
+      .rupi-tour-tooltip {
         position: fixed;
         z-index: 99999;
         width: 380px;
         max-width: calc(100vw - 40px);
-        background: var(--color-container, #1f2937);
-        border: 1px solid var(--color-border-primary, rgba(255,255,255,0.15));
+        background: ${this.colors.container};
+        border: 1px solid ${this.colors.border};
         border-radius: 16px;
         padding: 24px;
         box-shadow: 
-          0 25px 60px -12px rgba(0, 0, 0, 0.6),
+          0 25px 60px -12px rgba(0, 0, 0, 0.7),
           0 0 0 1px rgba(255, 255, 255, 0.05);
-        animation: tour-tooltip-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        animation: rupi-tooltip-enter 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       
-      @keyframes tour-tooltip-enter {
+      @keyframes rupi-tooltip-enter {
         from { opacity: 0; transform: translateY(15px) scale(0.9); }
         to { opacity: 1; transform: translateY(0) scale(1); }
       }
       
-      .tour-tooltip-header {
+      .rupi-tour-tooltip-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         margin-bottom: 14px;
       }
       
-      .tour-tooltip-title {
+      .rupi-tour-tooltip-title {
         font-size: 18px;
         font-weight: 600;
-        color: var(--color-text-primary, #ffffff);
+        color: ${this.colors.text};
+        font-family: 'Geist', system-ui, sans-serif;
       }
       
-      .tour-tooltip-step {
+      .rupi-tour-tooltip-step {
         font-size: 12px;
         font-weight: 500;
-        color: var(--color-text-secondary, rgba(255,255,255,0.7));
-        background: var(--color-surface-inset, rgba(255,255,255,0.08));
+        color: ${this.colors.textSecondary};
+        background: ${this.colors.containerHover};
         padding: 5px 12px;
         border-radius: 20px;
       }
       
-      .tour-tooltip-content {
+      .rupi-tour-tooltip-content {
         font-size: 15px;
-        color: var(--color-text-secondary, rgba(255,255,255,0.85));
+        color: ${this.colors.textSecondary};
         line-height: 1.65;
         margin-bottom: 22px;
+        font-family: 'Geist', system-ui, sans-serif;
       }
       
-      .tour-tooltip-actions {
+      .rupi-tour-tooltip-actions {
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 16px;
       }
       
-      .tour-btn {
+      .rupi-tour-btn {
         padding: 11px 22px;
         border-radius: 10px;
         font-size: 14px;
@@ -213,111 +229,115 @@ export default class extends Controller {
         cursor: pointer;
         transition: all 0.2s;
         border: none;
+        font-family: 'Geist', system-ui, sans-serif;
       }
       
-      .tour-btn-skip {
+      .rupi-tour-btn-skip {
         background: transparent;
-        color: var(--color-text-tertiary, rgba(255,255,255,0.5));
+        color: ${this.colors.textTertiary};
       }
       
-      .tour-btn-skip:hover {
-        color: var(--color-text-primary, #ffffff);
-        background: var(--color-surface-hover, rgba(255,255,255,0.08));
+      .rupi-tour-btn-skip:hover {
+        color: ${this.colors.text};
+        background: ${this.colors.containerHover};
       }
       
-      .tour-btn-next {
-        background: var(--color-success, #10b981);
+      .rupi-tour-btn-next {
+        background: ${this.colors.success};
         color: white;
         min-width: 110px;
       }
       
-      .tour-btn-next:hover {
+      .rupi-tour-btn-next:hover {
+        background: ${this.colors.successHover};
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+        box-shadow: 0 6px 20px rgba(18, 183, 106, 0.45);
       }
       
-      .tour-progress {
+      .rupi-tour-progress {
         display: flex;
         gap: 8px;
         justify-content: center;
         flex: 1;
       }
       
-      .tour-progress-dot {
+      .rupi-tour-dot {
         width: 10px;
         height: 10px;
         border-radius: 50%;
-        background: var(--color-border-primary, rgba(255,255,255,0.2));
+        background: ${this.colors.containerHover};
         transition: all 0.3s;
       }
       
-      .tour-progress-dot.active {
-        background: var(--color-success, #10b981);
+      .rupi-tour-dot.active {
+        background: ${this.colors.success};
         transform: scale(1.3);
-        box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+        box-shadow: 0 0 10px rgba(18, 183, 106, 0.6);
       }
       
-      .tour-progress-dot.completed {
-        background: var(--color-success, #10b981);
+      .rupi-tour-dot.completed {
+        background: ${this.colors.success};
         opacity: 0.4;
       }
       
       /* Completion Modal - centered celebration */
-      .tour-modal-overlay {
+      .rupi-tour-modal-overlay {
         position: fixed;
         inset: 0;
         z-index: 99999;
-        background: rgba(0, 0, 0, 0.85);
+        background: ${this.colors.overlay};
         display: flex;
         align-items: center;
         justify-content: center;
-        animation: tour-modal-fade 0.3s ease-out;
+        animation: rupi-modal-fade 0.3s ease-out;
         padding: 20px;
       }
       
-      @keyframes tour-modal-fade {
+      @keyframes rupi-modal-fade {
         from { opacity: 0; }
         to { opacity: 1; }
       }
       
-      .tour-modal {
-        background: var(--color-container, #1f2937);
-        border: 1px solid var(--color-border-primary, rgba(255,255,255,0.1));
+      .rupi-tour-modal {
+        background: ${this.colors.container};
+        border: 1px solid ${this.colors.border};
         border-radius: 24px;
         padding: 48px 40px;
         text-align: center;
         max-width: 420px;
         width: 100%;
-        animation: tour-modal-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        animation: rupi-modal-enter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       
-      @keyframes tour-modal-enter {
+      @keyframes rupi-modal-enter {
         from { opacity: 0; transform: scale(0.7) translateY(30px); }
         to { opacity: 1; transform: scale(1) translateY(0); }
       }
       
-      .tour-modal-icon {
+      .rupi-tour-modal-icon {
         font-size: 72px;
         margin-bottom: 24px;
         display: block;
       }
       
-      .tour-modal-title {
+      .rupi-tour-modal-title {
         font-size: 28px;
         font-weight: 700;
-        color: var(--color-text-primary, #ffffff);
+        color: ${this.colors.text};
         margin-bottom: 16px;
+        font-family: 'Geist', system-ui, sans-serif;
       }
       
-      .tour-modal-text {
+      .rupi-tour-modal-text {
         font-size: 16px;
-        color: var(--color-text-secondary, rgba(255,255,255,0.7));
+        color: ${this.colors.textSecondary};
         line-height: 1.7;
         margin-bottom: 32px;
+        font-family: 'Geist', system-ui, sans-serif;
       }
       
-      .tour-modal-btn {
-        background: var(--color-success, #10b981);
+      .rupi-tour-modal-btn {
+        background: ${this.colors.success};
         color: white;
         border: none;
         padding: 16px 48px;
@@ -326,41 +346,34 @@ export default class extends Controller {
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
+        font-family: 'Geist', system-ui, sans-serif;
       }
       
-      .tour-modal-btn:hover {
+      .rupi-tour-modal-btn:hover {
+        background: ${this.colors.successHover};
         transform: translateY(-3px);
-        box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
+        box-shadow: 0 10px 30px rgba(18, 183, 106, 0.5);
       }
     `
     document.head.appendChild(this.styleElement)
   }
 
   createOverlay() {
+    // Always create dark overlay for all steps
     this.overlay = document.createElement("div")
-    this.overlay.className = "tour-overlay"
-    this.overlay.innerHTML = `
-      <svg>
-        <defs>
-          <mask id="tour-mask">
-            <rect x="0" y="0" width="100%" height="100%" fill="white"/>
-            <rect class="tour-mask-hole" x="0" y="0" width="0" height="0" rx="12" fill="black"/>
-          </mask>
-        </defs>
-        <rect x="0" y="0" width="100%" height="100%" fill="rgba(0,0,0,0.85)" mask="url(#tour-mask)"/>
-      </svg>
-    `
+    this.overlay.className = "rupi-tour-overlay"
     document.body.appendChild(this.overlay)
     
     // Create highlight ring
     this.ring = document.createElement("div")
-    this.ring.className = "tour-spotlight-ring"
+    this.ring.className = "rupi-tour-spotlight"
+    this.ring.style.display = 'none' // Hidden initially
     document.body.appendChild(this.ring)
   }
 
   createTooltip() {
     this.tooltip = document.createElement("div")
-    this.tooltip.className = "tour-tooltip"
+    this.tooltip.className = "rupi-tour-tooltip"
     document.body.appendChild(this.tooltip)
   }
 
@@ -376,27 +389,28 @@ export default class extends Controller {
       return this.showStep()
     }
 
-    // Scroll element into view first
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // For center position, hide spotlight
+    if (step.positions[0] === 'center') {
+      this.ring.style.display = 'none'
+    } else {
+      this.ring.style.display = 'block'
+      // Scroll element into view first
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
     
     setTimeout(() => {
-      this.updateSpotlight(target)
+      if (step.positions[0] !== 'center') {
+        this.updateSpotlight(target)
+      }
       this.renderTooltip(step, target)
     }, 350)
   }
 
   updateSpotlight(target) {
     const rect = target.getBoundingClientRect()
-    const padding = 16
+    const padding = 20
     
-    // Update SVG mask hole
-    const hole = this.overlay.querySelector('.tour-mask-hole')
-    hole.setAttribute('x', rect.left - padding)
-    hole.setAttribute('y', rect.top - padding)
-    hole.setAttribute('width', rect.width + padding * 2)
-    hole.setAttribute('height', rect.height + padding * 2)
-    
-    // Update highlight ring
+    // Position the spotlight ring around the target
     this.ring.style.left = `${rect.left - padding}px`
     this.ring.style.top = `${rect.top - padding}px`
     this.ring.style.width = `${rect.width + padding * 2}px`
@@ -406,62 +420,48 @@ export default class extends Controller {
   renderTooltip(step, target) {
     const totalSteps = this.steps.length
     const progressDots = this.steps.map((_, i) => {
-      let dotClass = 'tour-progress-dot'
+      let dotClass = 'rupi-tour-dot'
       if (i < this.currentStep) dotClass += ' completed'
       if (i === this.currentStep) dotClass += ' active'
       return `<div class="${dotClass}"></div>`
     }).join('')
     
     this.tooltip.innerHTML = `
-      <div class="tour-tooltip-header">
-        <span class="tour-tooltip-title">${step.title}</span>
-        <span class="tour-tooltip-step">${this.currentStep + 1} of ${totalSteps}</span>
+      <div class="rupi-tour-tooltip-header">
+        <span class="rupi-tour-tooltip-title">${step.title}</span>
+        <span class="rupi-tour-tooltip-step">${this.currentStep + 1} of ${totalSteps}</span>
       </div>
-      <p class="tour-tooltip-content">${step.content}</p>
-      <div class="tour-tooltip-actions">
-        <button class="tour-btn tour-btn-skip" onclick="window.endRupiTour && window.endRupiTour()">Skip</button>
-        <div class="tour-progress">${progressDots}</div>
-        <button class="tour-btn tour-btn-next" onclick="window.nextRupiTourStep && window.nextRupiTourStep()">
+      <p class="rupi-tour-tooltip-content">${step.content}</p>
+      <div class="rupi-tour-tooltip-actions">
+        <button class="rupi-tour-btn rupi-tour-btn-skip" onclick="window.endRupiTour && window.endRupiTour()">Skip</button>
+        <div class="rupi-tour-progress">${progressDots}</div>
+        <button class="rupi-tour-btn rupi-tour-btn-next" onclick="window.nextRupiTourStep && window.nextRupiTourStep()">
           ${this.currentStep === totalSteps - 1 ? '✓ Done' : 'Next →'}
         </button>
       </div>
     `
     
-    // Position tooltip using collision-free algorithm
+    // Position tooltip
     this.positionTooltipWithCollisionDetection(target, step.positions)
     
     window.nextRupiTourStep = () => this.next()
     window.endRupiTour = () => this.finish()
   }
 
-  /**
-   * Position tooltip trying each preferred position until one doesn't overlap
-   */
   positionTooltipWithCollisionDetection(target, positions) {
     const targetRect = target.getBoundingClientRect()
-    const padding = 20 // Padding from viewport edges
-    const gap = 24 // Gap between tooltip and target
-    const spotlightPadding = 16 // Must match spotlight padding
+    const padding = 24
+    const gap = 32
+    const spotlightPadding = 20
     
-    // Get tooltip dimensions
     const tooltipRect = this.tooltip.getBoundingClientRect()
     const tooltipWidth = tooltipRect.width || 380
     const tooltipHeight = tooltipRect.height || 200
-    
-    // Expanded target rect (including spotlight padding)
-    const expandedTarget = {
-      left: targetRect.left - spotlightPadding - gap,
-      right: targetRect.right + spotlightPadding + gap,
-      top: targetRect.top - spotlightPadding - gap,
-      bottom: targetRect.bottom + spotlightPadding + gap
-    }
 
-    // Try each position in order
     for (const position of positions) {
-      const coords = this.calculatePosition(position, targetRect, tooltipWidth, tooltipHeight, gap, padding)
+      const coords = this.calculatePosition(position, targetRect, tooltipWidth, tooltipHeight, gap, padding, spotlightPadding)
       
       if (coords) {
-        // Check if this position overlaps with the expanded target
         const tooltipBounds = {
           left: coords.left,
           right: coords.left + tooltipWidth,
@@ -469,15 +469,16 @@ export default class extends Controller {
           bottom: coords.top + tooltipHeight
         }
         
-        const overlaps = this.rectsOverlap(tooltipBounds, {
+        const targetBounds = {
           left: targetRect.left - spotlightPadding,
           right: targetRect.right + spotlightPadding,
           top: targetRect.top - spotlightPadding,
           bottom: targetRect.bottom + spotlightPadding
-        })
+        }
+        
+        const overlaps = this.rectsOverlap(tooltipBounds, targetBounds)
         
         if (!overlaps) {
-          // Found a good position!
           this.tooltip.style.left = `${coords.left}px`
           this.tooltip.style.top = `${coords.top}px`
           console.log(`[Tour] Step ${this.currentStep + 1}: Using position "${position}"`)
@@ -492,7 +493,7 @@ export default class extends Controller {
     this.tooltip.style.top = `${(window.innerHeight - tooltipHeight) / 2}px`
   }
 
-  calculatePosition(position, targetRect, tooltipWidth, tooltipHeight, gap, padding) {
+  calculatePosition(position, targetRect, tooltipWidth, tooltipHeight, gap, padding, spotlightPadding) {
     let left, top
     
     if (position === 'center') {
@@ -503,27 +504,27 @@ export default class extends Controller {
     }
     
     if (position === 'right') {
-      left = targetRect.right + gap + 16 // Extra gap for spotlight
+      left = targetRect.right + spotlightPadding + gap
       top = targetRect.top + (targetRect.height / 2) - (tooltipHeight / 2)
     } else if (position === 'left') {
-      left = targetRect.left - tooltipWidth - gap - 16
+      left = targetRect.left - spotlightPadding - gap - tooltipWidth
       top = targetRect.top + (targetRect.height / 2) - (tooltipHeight / 2)
     } else if (position === 'bottom') {
       left = targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2)
-      top = targetRect.bottom + gap + 16
+      top = targetRect.bottom + spotlightPadding + gap
     } else if (position === 'top') {
       left = targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2)
-      top = targetRect.top - tooltipHeight - gap - 16
+      top = targetRect.top - spotlightPadding - gap - tooltipHeight
     }
     
     // Clamp to viewport
     left = Math.max(padding, Math.min(left, window.innerWidth - tooltipWidth - padding))
     top = Math.max(padding, Math.min(top, window.innerHeight - tooltipHeight - padding))
     
-    // Check if tooltip would be off-screen
-    if (left < padding || left + tooltipWidth > window.innerWidth - padding ||
-        top < padding || top + tooltipHeight > window.innerHeight - padding) {
-      return null // Position not viable
+    // Check if tooltip would be mostly off-screen
+    if (left < 0 || left + tooltipWidth > window.innerWidth ||
+        top < 0 || top + tooltipHeight > window.innerHeight) {
+      return null
     }
     
     return { left, top }
@@ -568,13 +569,13 @@ export default class extends Controller {
 
   showCompletionModal() {
     const modal = document.createElement("div")
-    modal.className = "tour-modal-overlay"
+    modal.className = "rupi-tour-modal-overlay"
     modal.innerHTML = `
-      <div class="tour-modal">
-        <div class="tour-modal-icon">🎉</div>
-        <h3 class="tour-modal-title">You're All Set!</h3>
-        <p class="tour-modal-text">You now know the essentials of RUPI. Start by uploading a bank statement or exploring the AI assistant.<br><br>Need help anytime? Click <strong>"Help & FAQ"</strong> from the user menu.</p>
-        <button class="tour-modal-btn" onclick="this.closest('.tour-modal-overlay').remove()">Let's Go!</button>
+      <div class="rupi-tour-modal">
+        <div class="rupi-tour-modal-icon">🎉</div>
+        <h3 class="rupi-tour-modal-title">You're All Set!</h3>
+        <p class="rupi-tour-modal-text">You now know the essentials of RUPI. Start by uploading a bank statement or exploring the AI assistant.<br><br>Need help anytime? Click <strong>"Help & FAQ"</strong> from the user menu.</p>
+        <button class="rupi-tour-modal-btn" onclick="this.closest('.rupi-tour-modal-overlay').remove()">Let's Go!</button>
       </div>
     `
     document.body.appendChild(modal)

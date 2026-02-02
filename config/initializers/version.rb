@@ -4,7 +4,7 @@
 module Rupi
   class << self
     def version
-      "3.3.15"
+      "3.3.16"
     end
 
     def full_version

@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.3.16] - 2026-02-02
+
+### Fixed - Tour Design System Integration 🎨
+
+Complete color and styling overhaul to match RUPI's design system exactly:
+
+**Colors (from maybe-design-system.css):**
+
+- Surface: `#0B0B0B` (bg-surface dark)
+- Container: `#171717` (gray-900, bg-container dark)
+- Container Hover: `#242424` (gray-800)
+- Success: `#12B76A` (green-500)
+- Overlay: `rgba(11,11,11,0.92)` (near-black)
+
+**Fixes:**
+
+- ✅ **Dark overlay now ALWAYS visible** - even on "Welcome" step
+- ✅ **Spotlight ring hidden on center steps** - no confusing highlight
+- ✅ **Removed SVG mask** - using solid overlay + ring for reliability
+- ✅ **Geist font** - matches app typography
+- ✅ **Renamed all CSS classes** - `rupi-tour-*` prefix to avoid conflicts
+
+---
+
 ## [3.3.15] - 2026-02-02
 
 ### Fixed - Tour UX Issues 🔧
