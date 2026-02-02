@@ -1,14 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Guided Action Onboarding Controller v1
-// Interactive onboarding that requires user actions, not just viewing
+// Guided Action Onboarding Controller v2
+// Fixed: Uses manual event listeners for dynamically injected HTML
 export default class extends Controller {
   static values = {
     currentStep: { type: Number, default: 0 },
     dismissed: { type: Boolean, default: false }
   }
-
-  static targets = ["overlay", "modal", "progressBar", "progressText", "stepTitle", "stepContent", "actionArea"]
 
   // Onboarding steps - each requires a specific action
   steps = [
@@ -16,7 +14,7 @@ export default class extends Controller {
       id: "welcome",
       title: "👋 Welcome to RUPI!",
       content: "Your intelligent personal finance assistant. Let's get you set up in just a few minutes.",
-      action: "continue", // Just a continue button
+      action: "continue",
       buttonText: "Let's Start →",
       skipAllowed: true
     },
@@ -26,15 +24,14 @@ export default class extends Controller {
       content: "Before uploading your own data, let's explore RUPI with sample data. This helps you understand all the features safely.",
       action: "load_sample_data",
       buttonText: "Load Sample Data",
-      skipAllowed: false,
-      checkComplete: () => this.hasSampleData()
+      skipAllowed: false
     },
     {
       id: "explore_accounts",
       title: "🏦 Step 2: Explore Accounts",
       content: "Great! Now you have sample accounts. Click on any account in the left sidebar to see its transactions.",
       action: "navigate",
-      targetPath: "/accounts",
+      targetPath: "/transactions",
       buttonText: "I've explored the accounts",
       skipAllowed: false
     },
@@ -45,8 +42,7 @@ export default class extends Controller {
       action: "try_ai",
       suggestedPrompt: "What are my top 5 spending categories?",
       buttonText: "I've tried the AI",
-      skipAllowed: false,
-      checkComplete: () => this.hasUsedAI()
+      skipAllowed: false
     },
     {
       id: "explore_reports",
@@ -85,38 +81,32 @@ export default class extends Controller {
     }
   ]
 
+  overlayElement = null
+
   connect() {
-    // Check if onboarding should show
     this.checkAndShowOnboarding()
-    
-    // Listen for events from other parts of the app
-    window.addEventListener('rupi:sample-data-loaded', () => this.onSampleDataLoaded())
-    window.addEventListener('rupi:sample-data-cleared', () => this.onSampleDataCleared())
-    window.addEventListener('rupi:ai-message-sent', () => this.onAIMessageSent())
   }
 
   disconnect() {
-    window.removeEventListener('rupi:sample-data-loaded', () => this.onSampleDataLoaded())
-    window.removeEventListener('rupi:sample-data-cleared', () => this.onSampleDataCleared())
-    window.removeEventListener('rupi:ai-message-sent', () => this.onAIMessageSent())
+    this.hide()
   }
 
   checkAndShowOnboarding() {
-    // Don't show if already dismissed
+    // Don't show if already dismissed via server
     if (this.dismissedValue) return
     
-    // Check if user has completed onboarding
+    // Check localStorage for completion
     const savedStep = localStorage.getItem('rupi_onboarding_step')
     if (savedStep === 'complete') return
     
-    // Check if user is new (no accounts)
+    // Check if user has accounts or completed tour
     const hasAccounts = document.querySelector('[data-has-accounts]')?.dataset.hasAccounts === 'true'
     const hasCompletedTour = document.querySelector('[data-tour-completed]')?.dataset.tourCompleted === 'true'
     
-    // Show onboarding for new users
+    // Show onboarding for new users with no accounts
     if (!hasAccounts && !hasCompletedTour) {
       this.currentStepValue = savedStep ? parseInt(savedStep) : 0
-      setTimeout(() => this.show(), 500)
+      setTimeout(() => this.show(), 800)
     }
   }
 
@@ -148,10 +138,10 @@ export default class extends Controller {
         align-items: center;
         justify-content: center;
         padding: 20px;
-        animation: rupi-onboarding-fade 0.3s ease-out;
+        animation: rupi-ob-fade 0.3s ease-out;
       }
       
-      @keyframes rupi-onboarding-fade {
+      @keyframes rupi-ob-fade {
         from { opacity: 0; }
         to { opacity: 1; }
       }
@@ -161,39 +151,38 @@ export default class extends Controller {
         border: 1px solid rgba(255,255,255,0.1);
         border-radius: 24px;
         width: 100%;
-        max-width: 480px;
+        max-width: 440px;
         overflow: hidden;
-        animation: rupi-onboarding-slide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        animation: rupi-ob-slide 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       
-      @keyframes rupi-onboarding-slide {
+      @keyframes rupi-ob-slide {
         from { opacity: 0; transform: translateY(30px) scale(0.95); }
         to { opacity: 1; transform: translateY(0) scale(1); }
       }
       
       .rupi-onboarding-header {
-        padding: 24px 24px 16px;
+        padding: 28px 24px 12px;
         text-align: center;
       }
       
       .rupi-onboarding-logo {
-        font-size: 32px;
+        font-size: 28px;
         font-weight: 700;
         background: linear-gradient(135deg, #12B76A, #FACC15);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
-        margin-bottom: 8px;
       }
       
       .rupi-onboarding-progress {
-        padding: 0 24px;
+        padding: 0 24px 16px;
       }
       
       .rupi-onboarding-progress-bar {
-        height: 6px;
+        height: 4px;
         background: #333;
-        border-radius: 3px;
+        border-radius: 2px;
         overflow: hidden;
         margin-bottom: 8px;
       }
@@ -201,41 +190,39 @@ export default class extends Controller {
       .rupi-onboarding-progress-fill {
         height: 100%;
         background: linear-gradient(90deg, #12B76A, #10A861);
-        border-radius: 3px;
-        transition: width 0.5s ease-out;
+        border-radius: 2px;
+        transition: width 0.4s ease-out;
       }
       
       .rupi-onboarding-progress-text {
         font-size: 12px;
-        color: rgba(255,255,255,0.5);
+        color: rgba(255,255,255,0.4);
         text-align: center;
       }
       
       .rupi-onboarding-content {
-        padding: 24px;
+        padding: 8px 24px 24px;
         text-align: center;
       }
       
       .rupi-onboarding-title {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 600;
         color: white;
         margin-bottom: 12px;
-        font-family: 'Geist', system-ui, sans-serif;
       }
       
       .rupi-onboarding-description {
-        font-size: 15px;
-        color: rgba(255,255,255,0.7);
+        font-size: 14px;
+        color: rgba(255,255,255,0.6);
         line-height: 1.6;
         margin-bottom: 24px;
-        font-family: 'Geist', system-ui, sans-serif;
       }
       
       .rupi-onboarding-action-area {
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
       }
       
       .rupi-onboarding-btn-primary {
@@ -245,37 +232,32 @@ export default class extends Controller {
         color: white;
         border: none;
         border-radius: 12px;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
         cursor: pointer;
         transition: all 0.2s;
-        font-family: 'Geist', system-ui, sans-serif;
       }
       
       .rupi-onboarding-btn-primary:hover {
         background: #10A861;
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(18, 183, 106, 0.4);
+        transform: translateY(-1px);
       }
       
       .rupi-onboarding-btn-secondary {
         width: 100%;
         padding: 12px 24px;
         background: transparent;
-        color: rgba(255,255,255,0.6);
+        color: rgba(255,255,255,0.5);
         border: 1px solid rgba(255,255,255,0.1);
         border-radius: 12px;
         font-size: 14px;
-        font-weight: 500;
         cursor: pointer;
         transition: all 0.2s;
-        font-family: 'Geist', system-ui, sans-serif;
       }
       
       .rupi-onboarding-btn-secondary:hover {
         background: rgba(255,255,255,0.05);
         color: white;
-        border-color: rgba(255,255,255,0.2);
       }
       
       .rupi-onboarding-btn-destructive {
@@ -286,29 +268,29 @@ export default class extends Controller {
         border: 1px solid rgba(239, 68, 68, 0.2);
         border-radius: 12px;
         font-size: 14px;
-        font-weight: 500;
         cursor: pointer;
         transition: all 0.2s;
-        font-family: 'Geist', system-ui, sans-serif;
       }
       
       .rupi-onboarding-btn-destructive:hover {
         background: rgba(239, 68, 68, 0.2);
-        border-color: rgba(239, 68, 68, 0.4);
       }
       
       .rupi-onboarding-ai-prompt {
         background: #0B0B0B;
         border: 1px solid rgba(255,255,255,0.1);
         border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 16px;
+        padding: 14px;
+        margin-bottom: 14px;
+        text-align: left;
       }
       
       .rupi-onboarding-ai-prompt-label {
-        font-size: 12px;
-        color: rgba(255,255,255,0.5);
-        margin-bottom: 8px;
+        font-size: 11px;
+        color: rgba(255,255,255,0.4);
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
       }
       
       .rupi-onboarding-ai-prompt-text {
@@ -318,28 +300,26 @@ export default class extends Controller {
       }
       
       .rupi-onboarding-footer {
-        padding: 16px 24px 24px;
+        padding: 12px 24px 20px;
         text-align: center;
-        border-top: 1px solid rgba(255,255,255,0.05);
       }
       
       .rupi-onboarding-skip {
-        font-size: 13px;
-        color: rgba(255,255,255,0.4);
+        font-size: 12px;
+        color: rgba(255,255,255,0.3);
         background: none;
         border: none;
         cursor: pointer;
         padding: 8px 16px;
-        transition: color 0.2s;
       }
       
       .rupi-onboarding-skip:hover {
-        color: rgba(255,255,255,0.7);
+        color: rgba(255,255,255,0.6);
       }
       
       .rupi-onboarding-celebration {
-        font-size: 64px;
-        margin-bottom: 16px;
+        font-size: 56px;
+        margin-bottom: 12px;
       }
     `
     document.head.appendChild(style)
@@ -357,69 +337,7 @@ export default class extends Controller {
     
     const progress = ((this.currentStepValue) / (this.steps.length - 1)) * 100
     
-    let actionArea = ''
-    
-    // Build action area based on step type
-    switch (step.action) {
-      case 'continue':
-        actionArea = `<button class="rupi-onboarding-btn-primary" data-action="click->guided-onboarding#nextStep">${step.buttonText}</button>`
-        break
-        
-      case 'load_sample_data':
-        actionArea = `
-          <button class="rupi-onboarding-btn-primary" data-action="click->guided-onboarding#loadSampleData">
-            ${step.buttonText}
-          </button>
-        `
-        break
-        
-      case 'try_ai':
-        actionArea = `
-          <div class="rupi-onboarding-ai-prompt">
-            <div class="rupi-onboarding-ai-prompt-label">Try asking:</div>
-            <div class="rupi-onboarding-ai-prompt-text">"${step.suggestedPrompt}"</div>
-          </div>
-          <button class="rupi-onboarding-btn-primary" data-action="click->guided-onboarding#openAIChat">
-            Open AI Chat
-          </button>
-          <button class="rupi-onboarding-btn-secondary" data-action="click->guided-onboarding#nextStep">
-            ${step.buttonText}
-          </button>
-        `
-        break
-        
-      case 'navigate':
-        actionArea = `
-          <button class="rupi-onboarding-btn-primary" data-action="click->guided-onboarding#navigateTo" data-path="${step.targetPath}">
-            Go to ${step.targetPath === '/accounts' ? 'Accounts' : step.targetPath === '/reports' ? 'Reports' : 'Upload Page'}
-          </button>
-          <button class="rupi-onboarding-btn-secondary" data-action="click->guided-onboarding#nextStep">
-            ${step.buttonText}
-          </button>
-        `
-        break
-        
-      case 'clear_sample_data':
-        actionArea = `
-          <button class="rupi-onboarding-btn-destructive" data-action="click->guided-onboarding#clearSampleData">
-            ${step.altButtonText}
-          </button>
-          <button class="rupi-onboarding-btn-secondary" data-action="click->guided-onboarding#nextStep">
-            ${step.buttonText}
-          </button>
-        `
-        break
-        
-      case 'finish':
-        actionArea = `
-          <div class="rupi-onboarding-celebration">🎉</div>
-          <button class="rupi-onboarding-btn-primary" data-action="click->guided-onboarding#finish">
-            ${step.buttonText}
-          </button>
-        `
-        break
-    }
-    
+    // Build the modal HTML
     this.overlayElement.innerHTML = `
       <div class="rupi-onboarding-modal">
         <div class="rupi-onboarding-header">
@@ -436,20 +354,109 @@ export default class extends Controller {
         <div class="rupi-onboarding-content">
           <h2 class="rupi-onboarding-title">${step.title}</h2>
           <p class="rupi-onboarding-description">${step.content}</p>
-          <div class="rupi-onboarding-action-area">
-            ${actionArea}
-          </div>
+          <div class="rupi-onboarding-action-area" id="rupi-ob-actions"></div>
         </div>
         
         ${step.skipAllowed ? `
           <div class="rupi-onboarding-footer">
-            <button class="rupi-onboarding-skip" data-action="click->guided-onboarding#skipOnboarding">
-              Skip setup for now
-            </button>
+            <button class="rupi-onboarding-skip" id="rupi-ob-skip">Skip setup for now</button>
           </div>
         ` : ''}
       </div>
     `
+    
+    // Add action buttons with proper event listeners
+    const actionArea = this.overlayElement.querySelector('#rupi-ob-actions')
+    this.addActionButtons(actionArea, step)
+    
+    // Add skip listener if present
+    const skipBtn = this.overlayElement.querySelector('#rupi-ob-skip')
+    if (skipBtn) {
+      skipBtn.addEventListener('click', () => this.skipOnboarding())
+    }
+  }
+
+  addActionButtons(container, step) {
+    switch (step.action) {
+      case 'continue': {
+        const btn = this.createButton(step.buttonText, 'primary')
+        btn.addEventListener('click', () => this.nextStep())
+        container.appendChild(btn)
+        break
+      }
+        
+      case 'load_sample_data': {
+        const btn = this.createButton(step.buttonText, 'primary')
+        btn.addEventListener('click', () => this.loadSampleData())
+        container.appendChild(btn)
+        break
+      }
+        
+      case 'try_ai': {
+        // Add suggested prompt
+        const promptDiv = document.createElement('div')
+        promptDiv.className = 'rupi-onboarding-ai-prompt'
+        promptDiv.innerHTML = `
+          <div class="rupi-onboarding-ai-prompt-label">Try asking:</div>
+          <div class="rupi-onboarding-ai-prompt-text">"${step.suggestedPrompt}"</div>
+        `
+        container.appendChild(promptDiv)
+        
+        const primaryBtn = this.createButton('Open AI Chat', 'primary')
+        primaryBtn.addEventListener('click', () => this.openAIChat())
+        container.appendChild(primaryBtn)
+        
+        const secondaryBtn = this.createButton(step.buttonText, 'secondary')
+        secondaryBtn.addEventListener('click', () => this.nextStep())
+        container.appendChild(secondaryBtn)
+        break
+      }
+        
+      case 'navigate': {
+        const label = step.targetPath === '/transactions' ? 'Transactions' : 
+                      step.targetPath === '/reports' ? 'Reports' : 
+                      step.targetPath === '/bank_statements/new' ? 'Upload Page' : 'Page'
+        
+        const primaryBtn = this.createButton(`Go to ${label}`, 'primary')
+        primaryBtn.addEventListener('click', () => this.navigateTo(step.targetPath))
+        container.appendChild(primaryBtn)
+        
+        const secondaryBtn = this.createButton(step.buttonText, 'secondary')
+        secondaryBtn.addEventListener('click', () => this.nextStep())
+        container.appendChild(secondaryBtn)
+        break
+      }
+        
+      case 'clear_sample_data': {
+        const destructiveBtn = this.createButton(step.altButtonText, 'destructive')
+        destructiveBtn.addEventListener('click', () => this.clearSampleData())
+        container.appendChild(destructiveBtn)
+        
+        const secondaryBtn = this.createButton(step.buttonText, 'secondary')
+        secondaryBtn.addEventListener('click', () => this.nextStep())
+        container.appendChild(secondaryBtn)
+        break
+      }
+        
+      case 'finish': {
+        const celebration = document.createElement('div')
+        celebration.className = 'rupi-onboarding-celebration'
+        celebration.textContent = '🎉'
+        container.appendChild(celebration)
+        
+        const btn = this.createButton(step.buttonText, 'primary')
+        btn.addEventListener('click', () => this.finish())
+        container.appendChild(btn)
+        break
+      }
+    }
+  }
+
+  createButton(text, variant) {
+    const btn = document.createElement('button')
+    btn.className = `rupi-onboarding-btn-${variant}`
+    btn.textContent = text
+    return btn
   }
 
   nextStep() {
@@ -458,16 +465,7 @@ export default class extends Controller {
     this.renderStep()
   }
 
-  previousStep() {
-    if (this.currentStepValue > 0) {
-      this.currentStepValue--
-      this.saveProgress()
-      this.renderStep()
-    }
-  }
-
   loadSampleData() {
-    // Click the actual load demo data form
     const form = document.createElement('form')
     form.method = 'POST'
     form.action = '/load_demo_data'
@@ -482,11 +480,12 @@ export default class extends Controller {
     }
     
     document.body.appendChild(form)
-    form.submit()
     
-    // Save that we're on the next step
+    // Save progress before navigation
     this.currentStepValue++
     this.saveProgress()
+    
+    form.submit()
   }
 
   clearSampleData() {
@@ -510,29 +509,26 @@ export default class extends Controller {
     }
     
     document.body.appendChild(form)
-    form.submit()
     
-    this.nextStep()
+    // Save progress before navigation
+    this.currentStepValue++
+    this.saveProgress()
+    
+    form.submit()
   }
 
   openAIChat() {
-    // Hide overlay temporarily
     this.hide()
-    
-    // Navigate to chats or open AI sidebar
     window.location.href = '/chats'
   }
 
-  navigateTo(event) {
-    const path = event.currentTarget.dataset.path
-    
-    // Hide overlay and navigate
+  navigateTo(path) {
     this.hide()
     window.location.href = path
   }
 
   skipOnboarding() {
-    if (confirm('Are you sure you want to skip? You can always restart from Help & FAQ.')) {
+    if (confirm('Skip setup? You can restart from Settings → Profile anytime.')) {
       this.dismiss()
     }
   }
@@ -569,44 +565,15 @@ export default class extends Controller {
 
   async saveCompleted() {
     try {
-      await fetch('/dashboard/preferences', {
-        method: 'PATCH',
+      await fetch('/onboarding/dismiss', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.content
-        },
-        body: JSON.stringify({
-          preferences: { guided_onboarding_completed: true, tour_completed: true }
-        })
+        }
       })
     } catch (e) {
       console.log('Could not save completion')
     }
-  }
-
-  // Event handlers
-  onSampleDataLoaded() {
-    // If we were waiting on sample data, move to next step
-    if (this.steps[this.currentStepValue]?.id === 'load_sample_data') {
-      this.nextStep()
-    }
-  }
-
-  onSampleDataCleared() {
-    // Nothing special needed
-  }
-
-  onAIMessageSent() {
-    // Track that user has tried AI
-    localStorage.setItem('rupi_onboarding_ai_used', 'true')
-  }
-
-  // Helper checks
-  hasSampleData() {
-    return document.querySelector('[data-has-accounts]')?.dataset.hasAccounts === 'true'
-  }
-
-  hasUsedAI() {
-    return localStorage.getItem('rupi_onboarding_ai_used') === 'true'
   }
 }

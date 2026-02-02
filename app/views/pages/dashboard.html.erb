@@ -27,13 +27,14 @@
         <% end %>
 
         <%# Bank Statement Upload Button %>
-        <%= render DS::Link.new(
-          variant: "secondary",
-          icon: "upload",
-          text: "Upload Statement",
-          href: new_bank_statement_path,
-          data: { tour_target: "uploadStatement" }
-        ) %>
+        <span data-tour-target="uploadStatement">
+          <%= render DS::Link.new(
+            variant: "secondary",
+            icon: "upload",
+            text: "Upload Statement",
+            href: new_bank_statement_path
+          ) %>
+        </span>
 
         <%# New Account Button %>
         <%= render DS::Link.new(

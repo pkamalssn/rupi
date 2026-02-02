@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Professional Guided Tour Controller v5
-// Uses CSS pseudo-element technique for reliable spotlight
+// Professional Guided Tour Controller v6
+// Fixed: Better element targeting for Net Worth and Upload Statement
 export default class extends Controller {
   static values = {
     autoStart: Boolean,
@@ -23,16 +23,16 @@ export default class extends Controller {
       positions: ["right", "bottom"]
     },
     {
-      element: "[data-tour-target='netWorth']",
-      title: "💰 Net Worth",
-      content: "Track your total wealth over time. Assets minus liabilities = your net worth.",
-      positions: ["right", "left", "bottom"]
+      element: "#netWorthChart",
+      title: "💰 Net Worth Chart",
+      content: "Track your total wealth over time. This chart shows your assets minus liabilities = your net worth.",
+      positions: ["top", "bottom"]
     },
     {
       element: "[data-tour-target='uploadStatement']",
       title: "📄 Import Statements",
       content: "Upload bank statements from HDFC, ICICI, SBI, and 20+ Indian banks. We'll automatically categorize your transactions!",
-      positions: ["bottom", "left"]
+      positions: ["bottom-start", "bottom"]
     },
     {
       element: "[data-tour-target='aiChat']",
@@ -549,8 +549,19 @@ export default class extends Controller {
     } else if (position === 'bottom') {
       left = targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2)
       top = targetRect.bottom + spotlightPadding + gap
+    } else if (position === 'bottom-start') {
+      // Align tooltip left edge with target left edge
+      left = targetRect.left - spotlightPadding
+      top = targetRect.bottom + spotlightPadding + gap
+    } else if (position === 'bottom-end') {
+      // Align tooltip right edge with target right edge
+      left = targetRect.right + spotlightPadding - tooltipWidth
+      top = targetRect.bottom + spotlightPadding + gap
     } else if (position === 'top') {
       left = targetRect.left + (targetRect.width / 2) - (tooltipWidth / 2)
+      top = targetRect.top - spotlightPadding - gap - tooltipHeight
+    } else if (position === 'top-start') {
+      left = targetRect.left - spotlightPadding
       top = targetRect.top - spotlightPadding - gap - tooltipHeight
     }
     
