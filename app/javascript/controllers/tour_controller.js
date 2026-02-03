@@ -482,12 +482,32 @@ export default class extends Controller {
       return `<div class="${dotClass}"></div>`
     }).join('')
     
+    // Check if this is the upload statement step (step 3, index 3)
+    const isUploadStep = step.element === "[data-tour-target='uploadStatement']"
+    
     this.tooltip.innerHTML = `
       <div class="rupi-tour-tooltip-header">
         <span class="rupi-tour-tooltip-title">${step.title}</span>
         <span class="rupi-tour-tooltip-step">${this.currentStep + 1} of ${totalSteps}</span>
       </div>
       <p class="rupi-tour-tooltip-content">${step.content}</p>
+      ${isUploadStep ? `
+        <button class="rupi-tour-btn rupi-tour-btn-action" id="start-upload-wizard" style="
+          width: 100%;
+          margin-bottom: 12px;
+          padding: 12px 20px;
+          background: linear-gradient(135deg, #12B76A 0%, #0EA55E 100%);
+          color: white;
+          border: none;
+          border-radius: 10px;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s;
+        ">
+          📄 Start Upload Wizard
+        </button>
+      ` : ''}
       <div class="rupi-tour-tooltip-actions">
         <button class="rupi-tour-btn rupi-tour-btn-skip" onclick="window.endRupiTour && window.endRupiTour()">Skip</button>
         <div class="rupi-tour-progress">${progressDots}</div>
@@ -497,10 +517,38 @@ export default class extends Controller {
       </div>
     `
     
+    // Add upload wizard button handler
+    if (isUploadStep) {
+      const uploadBtn = this.tooltip.querySelector('#start-upload-wizard')
+      if (uploadBtn) {
+        uploadBtn.addEventListener('click', () => this.startUploadWizard())
+        uploadBtn.addEventListener('mouseenter', () => {
+          uploadBtn.style.transform = 'translateY(-2px)'
+          uploadBtn.style.boxShadow = '0 6px 20px rgba(18, 183, 106, 0.4)'
+        })
+        uploadBtn.addEventListener('mouseleave', () => {
+          uploadBtn.style.transform = ''
+          uploadBtn.style.boxShadow = ''
+        })
+      }
+    }
+    
     this.positionTooltip(target, step.positions)
     
     window.nextRupiTourStep = () => this.next()
     window.endRupiTour = () => this.finish()
+  }
+
+  startUploadWizard() {
+    // Mark tour as paused (will resume after upload)
+    localStorage.setItem('rupi_tour_paused', JSON.stringify({ step: this.currentStep }))
+    
+    // Start upload wizard tour
+    localStorage.setItem('rupi_upload_tour', JSON.stringify({ step: 0, active: true }))
+    
+    // Navigate to upload page
+    this.cleanup()
+    window.location.href = '/bank_statement/new'
   }
 
   positionTooltip(target, positions) {
