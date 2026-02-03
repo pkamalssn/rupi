@@ -37,9 +37,11 @@
 </div>
 
 <% if @show_signup_link %>
-  <div class="mt-4 p-4 rounded-lg bg-primary/10 border border-primary/20 text-center">
-    <p class="text-sm text-secondary mb-2">New to RUPI?</p>
-    <%= link_to "Create an account →", new_registration_path, class: "font-semibold text-primary hover:underline" %>
+  <div class="mt-4 p-4 rounded-lg bg-green-500/10 border-2 border-green-500/50 text-center">
+    <p class="text-sm text-white/80 mb-2">New to RUPI?</p>
+    <%= link_to new_registration_path, class: "inline-flex items-center gap-2 px-6 py-2 rounded-lg bg-green-500 text-white font-semibold hover:bg-green-600 transition" do %>
+      Create an account <span>→</span>
+    <% end %>
   </div>
 <% end %>
 
