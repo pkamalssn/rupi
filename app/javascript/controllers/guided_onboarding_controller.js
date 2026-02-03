@@ -11,6 +11,9 @@ export default class extends Controller {
   overlayElement = null
 
   connect() {
+    console.log('[Onboarding] Controller connected')
+    console.log('[Onboarding] dismissedValue:', this.dismissedValue)
+    console.log('[Onboarding] hasAccountsValue:', this.hasAccountsValue)
     this.checkAndShowOnboarding()
   }
 
@@ -19,18 +22,30 @@ export default class extends Controller {
   }
 
   checkAndShowOnboarding() {
-    if (this.dismissedValue) return
+    console.log('[Onboarding] checkAndShowOnboarding called')
+    
+    if (this.dismissedValue) {
+      console.log('[Onboarding] Skipped: dismissedValue is true')
+      return
+    }
     
     const completed = localStorage.getItem('rupi_onboarding_complete')
-    if (completed === 'true') return
+    console.log('[Onboarding] localStorage rupi_onboarding_complete:', completed)
+    if (completed === 'true') {
+      console.log('[Onboarding] Skipped: localStorage says complete')
+      return
+    }
     
     const hasAccounts = this.hasAccountsValue
+    console.log('[Onboarding] hasAccounts:', hasAccounts)
     
     if (hasAccounts) {
+      console.log('[Onboarding] Skipped: has accounts, marking complete')
       localStorage.setItem('rupi_onboarding_complete', 'true')
       return
     }
     
+    console.log('[Onboarding] All checks passed, showing welcome in 600ms')
     setTimeout(() => this.showWelcome(), 600)
   }
 
