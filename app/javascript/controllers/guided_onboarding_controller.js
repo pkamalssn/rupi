@@ -1,17 +1,25 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Guided Onboarding Controller v5 - PREMIUM DESIGN
+// Guided Onboarding Controller v6 - PREMIUM DESIGN + USER-SPECIFIC STORAGE
 // Beautiful, minimal, matching RUPI's dark aesthetic
+// Fixed: localStorage keys are now user-specific
 export default class extends Controller {
   static values = {
     dismissed: { type: Boolean, default: false },
-    hasAccounts: { type: Boolean, default: false }
+    hasAccounts: { type: Boolean, default: false },
+    userId: { type: String, default: "" }
   }
 
   overlayElement = null
 
+  // User-specific localStorage key
+  get storageKey() {
+    return `rupi_onboarding_complete_${this.userIdValue}`
+  }
+
   connect() {
     console.log('[Onboarding] Controller connected')
+    console.log('[Onboarding] userId:', this.userIdValue)
     console.log('[Onboarding] dismissedValue:', this.dismissedValue)
     console.log('[Onboarding] hasAccountsValue:', this.hasAccountsValue)
     this.checkAndShowOnboarding()
@@ -24,24 +32,27 @@ export default class extends Controller {
   checkAndShowOnboarding() {
     console.log('[Onboarding] checkAndShowOnboarding called')
     
+    // Skip if server says dismissed
     if (this.dismissedValue) {
-      console.log('[Onboarding] Skipped: dismissedValue is true')
+      console.log('[Onboarding] Skipped: dismissedValue is true (server preference)')
       return
     }
     
-    const completed = localStorage.getItem('rupi_onboarding_complete')
-    console.log('[Onboarding] localStorage rupi_onboarding_complete:', completed)
+    // Skip if localStorage says complete for THIS USER
+    const completed = localStorage.getItem(this.storageKey)
+    console.log('[Onboarding] localStorage key:', this.storageKey, '=', completed)
     if (completed === 'true') {
-      console.log('[Onboarding] Skipped: localStorage says complete')
+      console.log('[Onboarding] Skipped: localStorage says complete for this user')
       return
     }
     
+    // Skip if user already has accounts
     const hasAccounts = this.hasAccountsValue
     console.log('[Onboarding] hasAccounts:', hasAccounts)
     
     if (hasAccounts) {
-      console.log('[Onboarding] Skipped: has accounts, marking complete')
-      localStorage.setItem('rupi_onboarding_complete', 'true')
+      console.log('[Onboarding] Skipped: has accounts, marking complete for this user')
+      localStorage.setItem(this.storageKey, 'true')
       return
     }
     
@@ -363,7 +374,7 @@ export default class extends Controller {
   }
 
   loadSampleData() {
-    localStorage.setItem('rupi_onboarding_complete', 'true')
+    localStorage.setItem(this.storageKey, 'true')
     
     const form = document.createElement('form')
     form.method = 'POST'
@@ -383,7 +394,7 @@ export default class extends Controller {
   }
 
   goToUpload() {
-    localStorage.setItem('rupi_onboarding_complete', 'true')
+    localStorage.setItem(this.storageKey, 'true')
     // Start the upload wizard tour
     localStorage.setItem('rupi_upload_tour', JSON.stringify({ step: 0, active: true }))
     this.dismissOnServer()
@@ -391,7 +402,7 @@ export default class extends Controller {
   }
 
   skipOnboarding() {
-    localStorage.setItem('rupi_onboarding_complete', 'true')
+    localStorage.setItem(this.storageKey, 'true')
     this.hide()
     this.dismissOnServer()
   }
