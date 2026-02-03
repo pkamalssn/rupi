@@ -1,15 +1,15 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Professional Guided Tour Controller v6
-// Fixed: Better element targeting for Net Worth and Upload Statement
+// Professional Guided Tour Controller v8
+// Proper flow: Full tour first, then optional upload wizard at the end
 export default class extends Controller {
   static values = {
     autoStart: Boolean,
     completed: Boolean
   }
 
-  // Tour steps - carefully matched to actual DOM elements
-  // v7: Fixed selectors for Net Worth and Upload Statement
+  // Tour steps - reordered for better flow
+  // v8: Upload is just a highlight, final step is celebration with upload CTA
   steps = [
     {
       element: "[data-tour-target='welcome']",
@@ -30,12 +30,6 @@ export default class extends Controller {
       positions: ["left", "bottom", "top"]
     },
     {
-      element: "[data-tour-target='uploadStatement']",
-      title: "📄 Import Statements",
-      content: "Upload bank statements from HDFC, ICICI, SBI, and 20+ Indian banks. We'll automatically categorize your transactions!",
-      positions: ["bottom", "bottom-start", "left"]
-    },
-    {
       element: "[data-tour-target='aiChat']",
       title: "🤖 RUPI AI Assistant",
       content: "Ask questions in plain English! Try: 'How much did I spend last month?' or 'Show my top expenses'.",
@@ -46,6 +40,13 @@ export default class extends Controller {
       title: "🧭 Navigation",
       content: "Access Transactions, Reports, and Budgets from the sidebar. Everything you need is one click away!",
       positions: ["right", "bottom"]
+    },
+    {
+      element: "[data-tour-target='uploadStatement']",
+      title: "📄 Upload Your Statements",
+      content: "When you're ready, upload your bank statements from HDFC, ICICI, SBI, Axis, and 20+ Indian banks. We'll automatically import and categorize all your transactions!",
+      positions: ["bottom", "bottom-start", "left"],
+      isFinal: true  // Mark this as final step
     }
   ]
 
@@ -340,6 +341,41 @@ export default class extends Controller {
         transform: translateY(-3px);
         box-shadow: 0 10px 30px rgba(18, 183, 106, 0.5);
       }
+      
+      /* Final step buttons */
+      .rupi-tour-final-btn {
+        width: 100%;
+        padding: 14px 20px;
+        border-radius: 10px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: none;
+        font-family: 'Geist', system-ui, sans-serif;
+      }
+      
+      .rupi-tour-final-btn--primary {
+        background: linear-gradient(135deg, ${this.colors.success} 0%, ${this.colors.successHover} 100%);
+        color: white;
+        box-shadow: 0 4px 12px rgba(18, 183, 106, 0.3);
+      }
+      
+      .rupi-tour-final-btn--primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(18, 183, 106, 0.4);
+      }
+      
+      .rupi-tour-final-btn--secondary {
+        background: transparent;
+        color: ${this.colors.textSecondary};
+        border: 1px solid ${this.colors.border};
+      }
+      
+      .rupi-tour-final-btn--secondary:hover {
+        background: ${this.colors.containerHover};
+        color: ${this.colors.text};
+      }
     `
     document.head.appendChild(this.styleElement)
   }
@@ -482,8 +518,8 @@ export default class extends Controller {
       return `<div class="${dotClass}"></div>`
     }).join('')
     
-    // Check if this is the upload statement step (step 3, index 3)
-    const isUploadStep = step.element === "[data-tour-target='uploadStatement']"
+    // Check if this is the final upload step
+    const isFinalStep = step.isFinal === true
     
     this.tooltip.innerHTML = `
       <div class="rupi-tour-tooltip-header">
@@ -491,45 +527,36 @@ export default class extends Controller {
         <span class="rupi-tour-tooltip-step">${this.currentStep + 1} of ${totalSteps}</span>
       </div>
       <p class="rupi-tour-tooltip-content">${step.content}</p>
-      ${isUploadStep ? `
-        <button class="rupi-tour-btn rupi-tour-btn-action" id="start-upload-wizard" style="
-          width: 100%;
-          margin-bottom: 12px;
-          padding: 12px 20px;
-          background: linear-gradient(135deg, #12B76A 0%, #0EA55E 100%);
-          color: white;
-          border: none;
-          border-radius: 10px;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        ">
-          📄 Start Upload Wizard
-        </button>
-      ` : ''}
-      <div class="rupi-tour-tooltip-actions">
-        <button class="rupi-tour-btn rupi-tour-btn-skip" onclick="window.endRupiTour && window.endRupiTour()">Skip</button>
-        <div class="rupi-tour-progress">${progressDots}</div>
-        <button class="rupi-tour-btn rupi-tour-btn-next" onclick="window.nextRupiTourStep && window.nextRupiTourStep()">
-          ${this.currentStep === totalSteps - 1 ? '✓ Done' : 'Next →'}
-        </button>
-      </div>
+      ${isFinalStep ? `
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;">
+          <button class="rupi-tour-final-btn rupi-tour-final-btn--primary" id="start-upload-now">
+            📄 Upload Statement Now
+          </button>
+          <button class="rupi-tour-final-btn rupi-tour-final-btn--secondary" id="finish-tour-later">
+            Maybe Later
+          </button>
+        </div>
+      ` : `
+        <div class="rupi-tour-tooltip-actions">
+          <button class="rupi-tour-btn rupi-tour-btn-skip" onclick="window.endRupiTour && window.endRupiTour()">Skip</button>
+          <div class="rupi-tour-progress">${progressDots}</div>
+          <button class="rupi-tour-btn rupi-tour-btn-next" onclick="window.nextRupiTourStep && window.nextRupiTourStep()">
+            Next →
+          </button>
+        </div>
+      `}
     `
     
-    // Add upload wizard button handler
-    if (isUploadStep) {
-      const uploadBtn = this.tooltip.querySelector('#start-upload-wizard')
+    // Add final step button handlers
+    if (isFinalStep) {
+      const uploadBtn = this.tooltip.querySelector('#start-upload-now')
+      const laterBtn = this.tooltip.querySelector('#finish-tour-later')
+      
       if (uploadBtn) {
         uploadBtn.addEventListener('click', () => this.startUploadWizard())
-        uploadBtn.addEventListener('mouseenter', () => {
-          uploadBtn.style.transform = 'translateY(-2px)'
-          uploadBtn.style.boxShadow = '0 6px 20px rgba(18, 183, 106, 0.4)'
-        })
-        uploadBtn.addEventListener('mouseleave', () => {
-          uploadBtn.style.transform = ''
-          uploadBtn.style.boxShadow = ''
-        })
+      }
+      if (laterBtn) {
+        laterBtn.addEventListener('click', () => this.finishWithMessage())
       }
     }
     
@@ -540,8 +567,8 @@ export default class extends Controller {
   }
 
   startUploadWizard() {
-    // Mark tour as paused (will resume after upload)
-    localStorage.setItem('rupi_tour_paused', JSON.stringify({ step: this.currentStep }))
+    // Mark tour as complete
+    this.markTourComplete()
     
     // Start upload wizard tour
     localStorage.setItem('rupi_upload_tour', JSON.stringify({ step: 0, active: true }))
@@ -549,6 +576,25 @@ export default class extends Controller {
     // Navigate to upload page
     this.cleanup()
     window.location.href = '/bank_statement/new'
+  }
+  
+  finishWithMessage() {
+    this.markTourComplete()
+    this.showCompletionModal()
+  }
+  
+  markTourComplete() {
+    this.cleanup()
+    this.saveTourCompleted()
+  }
+  
+  showCompletionModal() {
+    this.showModal(
+      "🎉", 
+      "You're All Set!", 
+      "You now know the essentials of RUPI. When you're ready, upload your bank statements to see your real financial data.<br><br>Need help anytime? Click <strong>\"Help & FAQ\"</strong> from the user menu.", 
+      "Start Exploring!"
+    )
   }
 
   positionTooltip(target, positions) {

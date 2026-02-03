@@ -1,71 +1,95 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Upload Wizard Tour Controller
-// Guides new users through the bank statement upload process
+// Upload Wizard Tour Controller v2
+// Non-intrusive floating guide bar at the bottom of screen
 // Persists across page navigations using localStorage
 export default class extends Controller {
   static values = {
-    page: { type: String, default: "" }  // "select", "upload", "processing", "success"
+    page: { type: String, default: "" }
   }
 
-  tooltipElement = null
+  guideBar = null
   
-  steps = {
-    select: {
-      title: "Step 1: Select Your Bank",
-      content: "Choose your bank from the dropdown. We support HDFC, ICICI, SBI, Axis, and 20+ more Indian banks.",
-      position: "below",
-      target: "[data-upload-tour='bank-select']",
-      nextAction: "After selecting, choose your file"
-    },
-    upload: {
-      title: "Step 2: Upload Statement",
-      content: "Drag & drop your PDF/Excel statement or click to browse. We'll automatically extract all transactions.",
-      position: "below",
-      target: "[data-upload-tour='file-drop']",
-      nextAction: "Click 'Upload & Import' when ready"
-    },
-    processing: {
-      title: "Processing Your Statement",
-      content: "RUPI is reading your statement and categorizing transactions. This usually takes 10-30 seconds.",
-      position: "center",
-      target: null,
-      nextAction: "Please wait..."
-    },
-    success: {
-      title: "🎉 Import Complete!",
-      content: "Your transactions are now imported. You can view them in Transactions, or explore Reports and AI insights.",
-      position: "center",
-      target: null,
-      nextAction: "Explore your data"
-    }
-  }
+  // Steps with progress indicators
+  steps = [
+    { key: 'select', title: 'Select Bank', description: 'Choose your bank from the dropdown', done: false },
+    { key: 'upload', title: 'Upload File', description: 'Drop your PDF/Excel statement', done: false },
+    { key: 'import', title: 'Import', description: 'Confirm and import transactions', done: false },
+    { key: 'done', title: 'Done!', description: 'View your transactions', done: false }
+  ]
 
   connect() {
-    this.checkAndShowTour()
+    this.checkAndShowGuide()
+    this.setupEventListeners()
   }
 
   disconnect() {
     this.hide()
+    this.removeEventListeners()
   }
 
-  checkAndShowTour() {
+  setupEventListeners() {
+    // Listen for bank selection
+    this.bankSelectHandler = this.onBankSelected.bind(this)
+    const bankSelect = document.querySelector('[data-upload-tour="bank-select"]')
+    if (bankSelect) {
+      bankSelect.addEventListener('change', this.bankSelectHandler)
+    }
+    
+    // Listen for file selection
+    this.fileSelectHandler = this.onFileSelected.bind(this)
+    const fileInput = document.querySelector('input[type="file"]')
+    if (fileInput) {
+      fileInput.addEventListener('change', this.fileSelectHandler)
+    }
+  }
+
+  removeEventListeners() {
+    const bankSelect = document.querySelector('[data-upload-tour="bank-select"]')
+    if (bankSelect && this.bankSelectHandler) {
+      bankSelect.removeEventListener('change', this.bankSelectHandler)
+    }
+    
+    const fileInput = document.querySelector('input[type="file"]')
+    if (fileInput && this.fileSelectHandler) {
+      fileInput.removeEventListener('change', this.fileSelectHandler)
+    }
+  }
+
+  onBankSelected(e) {
+    if (e.target.value) {
+      this.markStepDone('select')
+      this.updateGuideBar()
+    }
+  }
+
+  onFileSelected(e) {
+    if (e.target.files?.length > 0) {
+      this.markStepDone('upload')
+      this.updateGuideBar()
+    }
+  }
+
+  checkAndShowGuide() {
     const tourData = this.getTourState()
     if (!tourData?.active) return
     
-    // Determine current page based on URL and show appropriate tooltip
+    // Determine current page and update step progress
     const path = window.location.pathname
     
     if (path.includes('/bank_statement/new')) {
-      setTimeout(() => this.showStep('select'), 500)
+      this.showGuideBar('select')
     } else if (path.includes('/imports/') && path.includes('/upload')) {
-      setTimeout(() => this.showStep('upload'), 500)
-    } else if (path.includes('/imports/') && (path.includes('/clean') || path.includes('/confirm'))) {
-      setTimeout(() => this.showStep('processing'), 500)
-    } else if (path.includes('/transactions')) {
+      this.markStepDone('select')
+      this.showGuideBar('upload')
+    } else if (path.includes('/imports/') && (path.includes('/configuration') || path.includes('/clean') || path.includes('/confirm'))) {
+      this.markStepDone('select')
+      this.markStepDone('upload')
+      this.showGuideBar('import')
+    } else if (path.includes('/transactions') || path.includes('/dashboard')) {
       // Check if we just finished an import
-      if (tourData.justImported) {
-        setTimeout(() => this.showStep('success'), 500)
+      if (tourData.lastStep === 'import') {
+        this.showSuccessToast()
         this.completeTour()
       }
     }
@@ -83,94 +107,101 @@ export default class extends Controller {
     localStorage.setItem('rupi_upload_tour', JSON.stringify(data))
   }
 
-  showStep(stepKey) {
-    const step = this.steps[stepKey]
-    if (!step) return
-    
+  markStepDone(stepKey) {
+    const state = this.getTourState() || { active: true, completedSteps: [] }
+    if (!state.completedSteps) state.completedSteps = []
+    if (!state.completedSteps.includes(stepKey)) {
+      state.completedSteps.push(stepKey)
+    }
+    state.lastStep = stepKey
+    this.saveTourState(state)
+  }
+
+  showGuideBar(currentStep) {
     this.hide()
     this.injectStyles()
     
-    // Update tour state
-    this.saveTourState({ active: true, currentStep: stepKey })
+    const state = this.getTourState() || { completedSteps: [] }
+    const completedSteps = state.completedSteps || []
     
-    if (step.position === 'center') {
-      this.showCenterTooltip(step)
-    } else {
-      this.showTargetedTooltip(step)
-    }
-  }
-
-  showCenterTooltip(step) {
-    this.tooltipElement = document.createElement('div')
-    this.tooltipElement.className = 'upload-tour-overlay'
-    this.tooltipElement.innerHTML = `
-      <div class="upload-tour-card upload-tour-card--center">
-        <h3 class="upload-tour-title">${step.title}</h3>
-        <p class="upload-tour-content">${step.content}</p>
-        <div class="upload-tour-actions">
-          <button class="upload-tour-btn upload-tour-btn--primary" id="upload-tour-ok">Got it</button>
+    this.guideBar = document.createElement('div')
+    this.guideBar.className = 'upload-guide-bar'
+    this.guideBar.innerHTML = `
+      <div class="upload-guide-content">
+        <div class="upload-guide-title">
+          📄 Upload Wizard
         </div>
+        <div class="upload-guide-steps">
+          ${this.steps.slice(0, -1).map((step, i) => `
+            <div class="upload-guide-step ${completedSteps.includes(step.key) ? 'done' : ''} ${step.key === currentStep ? 'current' : ''}">
+              <div class="upload-guide-step-number">${completedSteps.includes(step.key) ? '✓' : i + 1}</div>
+              <div class="upload-guide-step-text">
+                <span class="upload-guide-step-title">${step.title}</span>
+              </div>
+            </div>
+            ${i < this.steps.length - 2 ? '<div class="upload-guide-connector"></div>' : ''}
+          `).join('')}
+        </div>
+        <button class="upload-guide-dismiss" id="dismiss-guide">×</button>
       </div>
     `
-    document.body.appendChild(this.tooltipElement)
     
-    this.tooltipElement.querySelector('#upload-tour-ok').addEventListener('click', () => this.hide())
+    document.body.appendChild(this.guideBar)
+    
+    this.guideBar.querySelector('#dismiss-guide').addEventListener('click', () => this.completeTour())
+    
+    // Animate in
+    requestAnimationFrame(() => {
+      this.guideBar.classList.add('visible')
+    })
   }
 
-  showTargetedTooltip(step) {
-    const target = document.querySelector(step.target)
-    if (!target) {
-      // Fallback: look for common elements
-      const fallbackTarget = document.querySelector('select, .dropzone, [type="file"]')
-      if (!fallbackTarget) return
+  updateGuideBar() {
+    // Just refresh the guide bar with new completion state
+    const currentStep = this.getCurrentStep()
+    if (currentStep) {
+      this.showGuideBar(currentStep)
     }
+  }
+
+  getCurrentStep() {
+    const state = this.getTourState()
+    if (!state) return null
     
-    const targetEl = target || document.querySelector('select, .dropzone')
-    if (!targetEl) return
-    
-    const rect = targetEl.getBoundingClientRect()
-    
-    this.tooltipElement = document.createElement('div')
-    this.tooltipElement.className = 'upload-tour-tooltip'
-    this.tooltipElement.innerHTML = `
-      <div class="upload-tour-arrow"></div>
-      <h3 class="upload-tour-title">${step.title}</h3>
-      <p class="upload-tour-content">${step.content}</p>
-      <div class="upload-tour-actions">
-        <button class="upload-tour-btn upload-tour-btn--text" id="upload-tour-skip">Skip tour</button>
-        <button class="upload-tour-btn upload-tour-btn--small" id="upload-tour-ok">Got it</button>
-      </div>
+    const completedSteps = state.completedSteps || []
+    for (const step of this.steps) {
+      if (!completedSteps.includes(step.key)) {
+        return step.key
+      }
+    }
+    return 'done'
+  }
+
+  showSuccessToast() {
+    const toast = document.createElement('div')
+    toast.className = 'upload-success-toast'
+    toast.innerHTML = `
+      <span class="upload-success-icon">🎉</span>
+      <span class="upload-success-text">Statement imported successfully!</span>
     `
+    document.body.appendChild(toast)
     
-    // Position tooltip below target
-    const top = rect.bottom + window.scrollY + 12
-    const left = Math.max(16, Math.min(rect.left + rect.width / 2 - 160, window.innerWidth - 336))
+    requestAnimationFrame(() => toast.classList.add('visible'))
     
-    this.tooltipElement.style.top = `${top}px`
-    this.tooltipElement.style.left = `${left}px`
-    
-    // Highlight target
-    targetEl.style.position = 'relative'
-    targetEl.style.zIndex = '10001'
-    targetEl.classList.add('upload-tour-highlight')
-    
-    document.body.appendChild(this.tooltipElement)
-    
-    this.tooltipElement.querySelector('#upload-tour-ok').addEventListener('click', () => this.hide())
-    this.tooltipElement.querySelector('#upload-tour-skip').addEventListener('click', () => this.completeTour())
+    setTimeout(() => {
+      toast.classList.remove('visible')
+      setTimeout(() => toast.remove(), 300)
+    }, 4000)
   }
 
   hide() {
-    if (this.tooltipElement) {
-      this.tooltipElement.remove()
-      this.tooltipElement = null
+    if (this.guideBar) {
+      this.guideBar.classList.remove('visible')
+      setTimeout(() => {
+        this.guideBar?.remove()
+        this.guideBar = null
+      }, 300)
     }
-    
-    // Remove highlights
-    document.querySelectorAll('.upload-tour-highlight').forEach(el => {
-      el.classList.remove('upload-tour-highlight')
-      el.style.zIndex = ''
-    })
   }
 
   completeTour() {
@@ -178,149 +209,146 @@ export default class extends Controller {
     this.hide()
   }
 
-  // Called when user navigates to next step
-  advanceStep() {
-    const state = this.getTourState()
-    if (!state?.active) return
-    
-    const stepOrder = ['select', 'upload', 'processing', 'success']
-    const currentIndex = stepOrder.indexOf(state.currentStep)
-    
-    if (currentIndex < stepOrder.length - 1) {
-      this.saveTourState({ 
-        active: true, 
-        currentStep: stepOrder[currentIndex + 1],
-        justImported: state.currentStep === 'processing'
-      })
-    }
-  }
-
   injectStyles() {
-    if (document.getElementById('upload-tour-styles')) return
+    if (document.getElementById('upload-guide-styles-v2')) return
     
     const style = document.createElement('style')
-    style.id = 'upload-tour-styles'
+    style.id = 'upload-guide-styles-v2'
     style.textContent = `
-      .upload-tour-overlay {
+      .upload-guide-bar {
         position: fixed;
-        inset: 0;
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(0, 0, 0, 0.7);
-        backdrop-filter: blur(4px);
-        animation: uploadTourFade 0.3s ease-out;
-      }
-      
-      @keyframes uploadTourFade {
-        from { opacity: 0; }
-        to { opacity: 1; }
-      }
-      
-      .upload-tour-card {
-        background: #171717;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 16px;
-        padding: 24px;
-        max-width: 360px;
-        text-align: center;
-        animation: uploadTourSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      
-      @keyframes uploadTourSlide {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      
-      .upload-tour-tooltip {
-        position: absolute;
-        z-index: 10002;
-        background: #171717;
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 12px;
-        padding: 16px 20px;
-        width: 320px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-        animation: uploadTourSlide 0.3s ease-out;
-      }
-      
-      .upload-tour-arrow {
-        position: absolute;
-        top: -8px;
+        bottom: -80px;
         left: 50%;
         transform: translateX(-50%);
-        width: 0;
-        height: 0;
-        border-left: 8px solid transparent;
-        border-right: 8px solid transparent;
-        border-bottom: 8px solid #171717;
+        z-index: 9999;
+        transition: bottom 0.3s ease-out;
       }
       
-      .upload-tour-title {
-        font-size: 15px;
-        font-weight: 600;
-        color: #fff;
-        margin: 0 0 8px;
+      .upload-guide-bar.visible {
+        bottom: 24px;
       }
       
-      .upload-tour-content {
-        font-size: 13px;
-        color: rgba(255,255,255,0.6);
-        line-height: 1.5;
-        margin: 0 0 16px;
-      }
-      
-      .upload-tour-actions {
+      .upload-guide-content {
         display: flex;
         align-items: center;
-        justify-content: flex-end;
-        gap: 12px;
+        gap: 20px;
+        background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 16px;
+        padding: 12px 20px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
       }
       
-      .upload-tour-btn {
-        cursor: pointer;
-        border: none;
+      .upload-guide-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #12B76A;
+        white-space: nowrap;
+      }
+      
+      .upload-guide-steps {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .upload-guide-step {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
         border-radius: 8px;
-        font-size: 13px;
-        font-weight: 500;
+        background: rgba(255,255,255,0.03);
         transition: all 0.2s;
       }
       
-      .upload-tour-btn--primary {
+      .upload-guide-step.current {
+        background: rgba(18, 183, 106, 0.15);
+        border: 1px solid rgba(18, 183, 106, 0.3);
+      }
+      
+      .upload-guide-step.done {
+        opacity: 0.6;
+      }
+      
+      .upload-guide-step-number {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.1);
+        color: rgba(255,255,255,0.6);
+        font-size: 12px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .upload-guide-step.done .upload-guide-step-number {
         background: #12B76A;
         color: white;
-        padding: 10px 20px;
       }
       
-      .upload-tour-btn--primary:hover {
-        background: #10A861;
-      }
-      
-      .upload-tour-btn--small {
+      .upload-guide-step.current .upload-guide-step-number {
         background: #12B76A;
         color: white;
-        padding: 8px 16px;
       }
       
-      .upload-tour-btn--small:hover {
-        background: #10A861;
-      }
-      
-      .upload-tour-btn--text {
-        background: none;
-        color: rgba(255,255,255,0.4);
-        padding: 8px;
-      }
-      
-      .upload-tour-btn--text:hover {
+      .upload-guide-step-title {
+        font-size: 13px;
         color: rgba(255,255,255,0.7);
+        font-weight: 500;
       }
       
-      .upload-tour-highlight {
-        outline: 2px solid #12B76A !important;
-        outline-offset: 4px !important;
-        border-radius: 8px !important;
+      .upload-guide-step.current .upload-guide-step-title {
+        color: white;
+      }
+      
+      .upload-guide-connector {
+        width: 20px;
+        height: 2px;
+        background: rgba(255,255,255,0.1);
+      }
+      
+      .upload-guide-dismiss {
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.3);
+        font-size: 18px;
+        cursor: pointer;
+        padding: 4px 8px;
+        margin-left: 8px;
+      }
+      
+      .upload-guide-dismiss:hover {
+        color: rgba(255,255,255,0.6);
+      }
+      
+      .upload-success-toast {
+        position: fixed;
+        bottom: -60px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: linear-gradient(135deg, #12B76A 0%, #0EA55E 100%);
+        color: white;
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-size: 15px;
+        font-weight: 600;
+        box-shadow: 0 10px 30px rgba(18, 183, 106, 0.3);
+        transition: bottom 0.3s ease-out;
+      }
+      
+      .upload-success-toast.visible {
+        bottom: 24px;
+      }
+      
+      .upload-success-icon {
+        font-size: 20px;
       }
     `
     document.head.appendChild(style)
