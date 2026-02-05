@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Upload Wizard Tour Controller v2
-// Non-intrusive floating guide bar at the bottom of screen
-// Persists across page navigations using localStorage
+// Upload Wizard Tour Controller v3
+// Persistent, prominent floating progress bar that follows the entire upload lifecycle
+// Tracks: Bank Selection → File Upload → Processing → Success
 export default class extends Controller {
   static values = {
     page: { type: String, default: "" }
@@ -10,91 +10,266 @@ export default class extends Controller {
 
   guideBar = null
   
-  // Steps with progress indicators
-  steps = [
-    { key: 'select', title: 'Select Bank', description: 'Choose your bank from the dropdown', done: false },
-    { key: 'upload', title: 'Upload File', description: 'Drop your PDF/Excel statement', done: false },
-    { key: 'import', title: 'Import', description: 'Confirm and import transactions', done: false },
-    { key: 'done', title: 'Done!', description: 'View your transactions', done: false }
+  // Steps displayed to user
+  stepLabels = [
+    { key: 'bank', label: 'Select Bank', icon: '🏦' },
+    { key: 'file', label: 'Upload File', icon: '📄' },
+    { key: 'process', label: 'Processing', icon: '⚙️' },
+    { key: 'complete', label: 'Complete', icon: '✅' }
   ]
 
   connect() {
+    console.log('[UploadTour] Controller connected, checking tour state...')
     this.checkAndShowGuide()
     this.setupEventListeners()
   }
 
   disconnect() {
-    this.hide()
     this.removeEventListeners()
+    // Don't hide on disconnect - let it persist across Turbo navigation
   }
 
   setupEventListeners() {
-    // Listen for bank selection
+    // Listen for bank selection changes
     this.bankSelectHandler = this.onBankSelected.bind(this)
-    const bankSelect = document.querySelector('[data-upload-tour="bank-select"]')
+    const bankSelect = document.querySelector('[data-upload-tour="bank-select"], select[name*="bank"]')
     if (bankSelect) {
       bankSelect.addEventListener('change', this.bankSelectHandler)
+      console.log('[UploadTour] Attached bank select listener')
     }
     
     // Listen for file selection
     this.fileSelectHandler = this.onFileSelected.bind(this)
-    const fileInput = document.querySelector('input[type="file"]')
-    if (fileInput) {
-      fileInput.addEventListener('change', this.fileSelectHandler)
-    }
+    const fileInputs = document.querySelectorAll('input[type="file"]')
+    fileInputs.forEach(input => {
+      input.addEventListener('change', this.fileSelectHandler)
+    })
+    if (fileInputs.length) console.log('[UploadTour] Attached file input listeners')
+    
+    // Listen for form submissions (processing step)
+    this.formSubmitHandler = this.onFormSubmit.bind(this)
+    const forms = document.querySelectorAll('form[action*="import"], form[action*="upload"]')
+    forms.forEach(form => {
+      form.addEventListener('submit', this.formSubmitHandler)
+    })
   }
 
   removeEventListeners() {
-    const bankSelect = document.querySelector('[data-upload-tour="bank-select"]')
+    const bankSelect = document.querySelector('[data-upload-tour="bank-select"], select[name*="bank"]')
     if (bankSelect && this.bankSelectHandler) {
       bankSelect.removeEventListener('change', this.bankSelectHandler)
     }
     
-    const fileInput = document.querySelector('input[type="file"]')
-    if (fileInput && this.fileSelectHandler) {
-      fileInput.removeEventListener('change', this.fileSelectHandler)
-    }
+    const fileInputs = document.querySelectorAll('input[type="file"]')
+    fileInputs.forEach(input => {
+      if (this.fileSelectHandler) {
+        input.removeEventListener('change', this.fileSelectHandler)
+      }
+    })
   }
 
+  // ============ EVENT HANDLERS ============
+  
   onBankSelected(e) {
+    console.log('[UploadTour] Bank selected:', e.target.value)
     if (e.target.value) {
-      this.markStepDone('select')
-      this.updateGuideBar()
+      this.markStepDone('bank')
+      this.refreshGuideBar()
     }
   }
 
   onFileSelected(e) {
+    console.log('[UploadTour] File selected:', e.target.files?.length)
     if (e.target.files?.length > 0) {
-      this.markStepDone('upload')
-      this.updateGuideBar()
+      this.markStepDone('file')
+      this.refreshGuideBar()
     }
   }
 
+  onFormSubmit(e) {
+    console.log('[UploadTour] Form submitted, marking process step')
+    this.markStepDone('process')
+    this.saveTourState({ ...this.getTourState(), inProgress: true })
+  }
+
+  // ============ GUIDE BAR DISPLAY ============
+  
   checkAndShowGuide() {
     const tourData = this.getTourState()
-    if (!tourData?.active) return
+    console.log('[UploadTour] Tour state:', tourData)
     
-    // Determine current page and update step progress
+    if (!tourData?.active) {
+      console.log('[UploadTour] Tour not active, skipping')
+      return
+    }
+    
     const path = window.location.pathname
+    console.log('[UploadTour] Current path:', path)
     
+    // Track which step we're on based on URL
     if (path.includes('/bank_statement/new')) {
-      this.showGuideBar('select')
+      this.showGuideBar('bank')
     } else if (path.includes('/imports/') && path.includes('/upload')) {
-      this.markStepDone('select')
-      this.showGuideBar('upload')
+      this.markStepDone('bank')
+      this.showGuideBar('file')
     } else if (path.includes('/imports/') && (path.includes('/configuration') || path.includes('/clean') || path.includes('/confirm'))) {
-      this.markStepDone('select')
-      this.markStepDone('upload')
-      this.showGuideBar('import')
-    } else if (path.includes('/transactions') || path.includes('/dashboard')) {
-      // Check if we just finished an import
-      if (tourData.lastStep === 'import') {
-        this.showSuccessToast()
-        this.completeTour()
-      }
+      this.markStepDone('bank')
+      this.markStepDone('file')
+      this.showGuideBar('process')
+    } else if ((path === '/' || path.includes('/dashboard') || path.includes('/transactions')) && tourData.completedSteps?.includes('process')) {
+      // User completed upload and is back at dashboard
+      this.showCompletionModal()
+      this.completeTour()
+    } else if (tourData.active && tourData.completedSteps?.length > 0) {
+      // Show guide bar on any page if tour is active
+      this.showGuideBar(this.getCurrentStep())
     }
   }
 
+  showGuideBar(currentStepKey) {
+    // Remove existing bar first
+    const existingBar = document.querySelector('.upload-wizard-bar')
+    if (existingBar) existingBar.remove()
+    
+    this.injectStyles()
+    
+    const state = this.getTourState() || { completedSteps: [] }
+    const completedSteps = state.completedSteps || []
+    
+    this.guideBar = document.createElement('div')
+    this.guideBar.className = 'upload-wizard-bar'
+    
+    const stepsHtml = this.stepLabels.map((step, i) => {
+      const isDone = completedSteps.includes(step.key)
+      const isCurrent = step.key === currentStepKey
+      const isLast = i === this.stepLabels.length - 1
+      
+      return `
+        <div class="upload-wizard-step ${isDone ? 'done' : ''} ${isCurrent ? 'current' : ''}">
+          <div class="upload-wizard-step-icon">${isDone ? '✓' : step.icon}</div>
+          <span class="upload-wizard-step-label">${step.label}</span>
+        </div>
+        ${!isLast ? '<div class="upload-wizard-connector"></div>' : ''}
+      `
+    }).join('')
+    
+    this.guideBar.innerHTML = `
+      <div class="upload-wizard-content">
+        <div class="upload-wizard-header">
+          <span class="upload-wizard-title">📥 Upload Wizard</span>
+          <span class="upload-wizard-subtitle">Follow these steps to import your statement</span>
+        </div>
+        <div class="upload-wizard-steps">
+          ${stepsHtml}
+        </div>
+        <button class="upload-wizard-dismiss" id="dismiss-wizard" title="Dismiss">Skip</button>
+      </div>
+    `
+    
+    document.body.appendChild(this.guideBar)
+    
+    // Attach dismiss handler
+    document.getElementById('dismiss-wizard')?.addEventListener('click', () => {
+      this.completeTour()
+      this.guideBar?.remove()
+    })
+    
+    // Animate in
+    requestAnimationFrame(() => {
+      this.guideBar.classList.add('visible')
+    })
+  }
+
+  refreshGuideBar() {
+    const currentStep = this.getCurrentStep()
+    this.showGuideBar(currentStep)
+  }
+
+  getCurrentStep() {
+    const state = this.getTourState()
+    if (!state) return 'bank'
+    
+    const completedSteps = state.completedSteps || []
+    for (const step of this.stepLabels) {
+      if (!completedSteps.includes(step.key)) {
+        return step.key
+      }
+    }
+    return 'complete'
+  }
+
+  showCompletionModal() {
+    this.injectStyles()
+    
+    const modal = document.createElement('div')
+    modal.className = 'upload-wizard-modal-overlay'
+    modal.innerHTML = `
+      <div class="upload-wizard-modal">
+        <div class="upload-wizard-modal-icon">🎉</div>
+        <h3 class="upload-wizard-modal-title">Statement Imported!</h3>
+        <p class="upload-wizard-modal-text">
+          Your transactions have been imported and categorized. 
+          You can now explore your real financial data!
+        </p>
+        <p class="upload-wizard-modal-text" style="font-size: 14px; color: rgba(255,255,255,0.5);">
+          Want to clear the sample data loaded earlier?
+        </p>
+        <div class="upload-wizard-modal-actions">
+          <button class="upload-wizard-modal-btn upload-wizard-modal-btn--secondary" id="wizard-keep-sample">
+            Keep Sample Data
+          </button>
+          <button class="upload-wizard-modal-btn upload-wizard-modal-btn--danger" id="wizard-clear-sample">
+            Clear Sample Data
+          </button>
+        </div>
+        <button class="upload-wizard-modal-btn upload-wizard-modal-btn--primary" id="wizard-done" style="margin-top: 12px;">
+          Start Exploring →
+        </button>
+      </div>
+    `
+    
+    document.body.appendChild(modal)
+    
+    // Animate in
+    requestAnimationFrame(() => {
+      modal.classList.add('visible')
+    })
+    
+    // Button handlers
+    document.getElementById('wizard-keep-sample')?.addEventListener('click', () => {
+      modal.remove()
+    })
+    
+    document.getElementById('wizard-clear-sample')?.addEventListener('click', () => {
+      modal.innerHTML = `
+        <div class="upload-wizard-modal">
+          <div class="upload-wizard-modal-icon">⏳</div>
+          <h3 class="upload-wizard-modal-title">Clearing Sample Data...</h3>
+        </div>
+      `
+      // Submit form to clear demo data
+      const form = document.createElement('form')
+      form.method = 'POST'
+      form.action = '/clear_demo_data'
+      const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
+      if (csrfToken) {
+        const input = document.createElement('input')
+        input.type = 'hidden'
+        input.name = 'authenticity_token'
+        input.value = csrfToken
+        form.appendChild(input)
+      }
+      document.body.appendChild(form)
+      form.submit()
+    })
+    
+    document.getElementById('wizard-done')?.addEventListener('click', () => {
+      modal.remove()
+    })
+  }
+
+  // ============ STATE MANAGEMENT ============
+  
   getTourState() {
     try {
       return JSON.parse(localStorage.getItem('rupi_upload_tour'))
@@ -112,243 +287,293 @@ export default class extends Controller {
     if (!state.completedSteps) state.completedSteps = []
     if (!state.completedSteps.includes(stepKey)) {
       state.completedSteps.push(stepKey)
+      console.log('[UploadTour] Marked step done:', stepKey, 'All:', state.completedSteps)
     }
     state.lastStep = stepKey
     this.saveTourState(state)
   }
 
-  showGuideBar(currentStep) {
-    this.hide()
-    this.injectStyles()
-    
-    const state = this.getTourState() || { completedSteps: [] }
-    const completedSteps = state.completedSteps || []
-    
-    this.guideBar = document.createElement('div')
-    this.guideBar.className = 'upload-guide-bar'
-    this.guideBar.innerHTML = `
-      <div class="upload-guide-content">
-        <div class="upload-guide-title">
-          📄 Upload Wizard
-        </div>
-        <div class="upload-guide-steps">
-          ${this.steps.slice(0, -1).map((step, i) => `
-            <div class="upload-guide-step ${completedSteps.includes(step.key) ? 'done' : ''} ${step.key === currentStep ? 'current' : ''}">
-              <div class="upload-guide-step-number">${completedSteps.includes(step.key) ? '✓' : i + 1}</div>
-              <div class="upload-guide-step-text">
-                <span class="upload-guide-step-title">${step.title}</span>
-              </div>
-            </div>
-            ${i < this.steps.length - 2 ? '<div class="upload-guide-connector"></div>' : ''}
-          `).join('')}
-        </div>
-        <button class="upload-guide-dismiss" id="dismiss-guide">×</button>
-      </div>
-    `
-    
-    document.body.appendChild(this.guideBar)
-    
-    this.guideBar.querySelector('#dismiss-guide').addEventListener('click', () => this.completeTour())
-    
-    // Animate in
-    requestAnimationFrame(() => {
-      this.guideBar.classList.add('visible')
-    })
-  }
-
-  updateGuideBar() {
-    // Just refresh the guide bar with new completion state
-    const currentStep = this.getCurrentStep()
-    if (currentStep) {
-      this.showGuideBar(currentStep)
-    }
-  }
-
-  getCurrentStep() {
-    const state = this.getTourState()
-    if (!state) return null
-    
-    const completedSteps = state.completedSteps || []
-    for (const step of this.steps) {
-      if (!completedSteps.includes(step.key)) {
-        return step.key
-      }
-    }
-    return 'done'
-  }
-
-  showSuccessToast() {
-    const toast = document.createElement('div')
-    toast.className = 'upload-success-toast'
-    toast.innerHTML = `
-      <span class="upload-success-icon">🎉</span>
-      <span class="upload-success-text">Statement imported successfully!</span>
-    `
-    document.body.appendChild(toast)
-    
-    requestAnimationFrame(() => toast.classList.add('visible'))
-    
-    setTimeout(() => {
-      toast.classList.remove('visible')
-      setTimeout(() => toast.remove(), 300)
-    }, 4000)
-  }
-
-  hide() {
-    if (this.guideBar) {
-      this.guideBar.classList.remove('visible')
-      setTimeout(() => {
-        this.guideBar?.remove()
-        this.guideBar = null
-      }, 300)
-    }
-  }
-
   completeTour() {
+    console.log('[UploadTour] Completing tour')
     localStorage.removeItem('rupi_upload_tour')
-    this.hide()
   }
 
+  // ============ STYLES ============
+  
   injectStyles() {
-    if (document.getElementById('upload-guide-styles-v2')) return
+    if (document.getElementById('upload-wizard-styles-v3')) return
     
     const style = document.createElement('style')
-    style.id = 'upload-guide-styles-v2'
+    style.id = 'upload-wizard-styles-v3'
     style.textContent = `
-      .upload-guide-bar {
+      /* ========== FLOATING PROGRESS BAR ========== */
+      .upload-wizard-bar {
         position: fixed;
-        bottom: -80px;
+        bottom: -100px;
         left: 50%;
         transform: translateX(-50%);
         z-index: 9999;
-        transition: bottom 0.3s ease-out;
+        transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        max-width: 95vw;
       }
       
-      .upload-guide-bar.visible {
-        bottom: 24px;
+      .upload-wizard-bar.visible {
+        bottom: 20px;
       }
       
-      .upload-guide-content {
+      .upload-wizard-content {
         display: flex;
         align-items: center;
-        gap: 20px;
-        background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
-        border: 1px solid rgba(255,255,255,0.1);
-        border-radius: 16px;
-        padding: 12px 20px;
-        box-shadow: 0 10px 40px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.05);
+        gap: 24px;
+        background: linear-gradient(135deg, #1e1e1e 0%, #121212 100%);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 20px;
+        padding: 16px 24px;
+        box-shadow: 
+          0 20px 60px rgba(0,0,0,0.5),
+          0 0 0 1px rgba(255,255,255,0.05),
+          0 0 40px rgba(18, 183, 106, 0.1);
       }
       
-      .upload-guide-title {
-        font-size: 14px;
-        font-weight: 600;
+      .upload-wizard-header {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        border-right: 1px solid rgba(255,255,255,0.1);
+        padding-right: 20px;
+      }
+      
+      .upload-wizard-title {
+        font-size: 16px;
+        font-weight: 700;
         color: #12B76A;
         white-space: nowrap;
       }
       
-      .upload-guide-steps {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      
-      .upload-guide-step {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 12px;
-        border-radius: 8px;
-        background: rgba(255,255,255,0.03);
-        transition: all 0.2s;
-      }
-      
-      .upload-guide-step.current {
-        background: rgba(18, 183, 106, 0.15);
-        border: 1px solid rgba(18, 183, 106, 0.3);
-      }
-      
-      .upload-guide-step.done {
-        opacity: 0.6;
-      }
-      
-      .upload-guide-step-number {
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.1);
-        color: rgba(255,255,255,0.6);
+      .upload-wizard-subtitle {
         font-size: 12px;
-        font-weight: 600;
+        color: rgba(255,255,255,0.4);
+        white-space: nowrap;
+      }
+      
+      .upload-wizard-steps {
         display: flex;
         align-items: center;
-        justify-content: center;
+        gap: 8px;
       }
       
-      .upload-guide-step.done .upload-guide-step-number {
-        background: #12B76A;
-        color: white;
-      }
-      
-      .upload-guide-step.current .upload-guide-step-number {
-        background: #12B76A;
-        color: white;
-      }
-      
-      .upload-guide-step-title {
-        font-size: 13px;
-        color: rgba(255,255,255,0.7);
-        font-weight: 500;
-      }
-      
-      .upload-guide-step.current .upload-guide-step-title {
-        color: white;
-      }
-      
-      .upload-guide-connector {
-        width: 20px;
-        height: 2px;
-        background: rgba(255,255,255,0.1);
-      }
-      
-      .upload-guide-dismiss {
-        background: none;
-        border: none;
-        color: rgba(255,255,255,0.3);
-        font-size: 18px;
-        cursor: pointer;
-        padding: 4px 8px;
-        margin-left: 8px;
-      }
-      
-      .upload-guide-dismiss:hover {
-        color: rgba(255,255,255,0.6);
-      }
-      
-      .upload-success-toast {
-        position: fixed;
-        bottom: -60px;
-        left: 50%;
-        transform: translateX(-50%);
-        z-index: 10000;
+      .upload-wizard-step {
         display: flex;
         align-items: center;
         gap: 10px;
-        background: linear-gradient(135deg, #12B76A 0%, #0EA55E 100%);
-        color: white;
-        padding: 14px 24px;
+        padding: 10px 16px;
         border-radius: 12px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid transparent;
+        transition: all 0.3s ease;
+      }
+      
+      .upload-wizard-step.current {
+        background: rgba(18, 183, 106, 0.15);
+        border-color: rgba(18, 183, 106, 0.4);
+        box-shadow: 0 0 20px rgba(18, 183, 106, 0.2);
+      }
+      
+      .upload-wizard-step.done {
+        background: rgba(18, 183, 106, 0.08);
+      }
+      
+      .upload-wizard-step.done .upload-wizard-step-icon {
+        background: #12B76A;
+        color: white;
+      }
+      
+      .upload-wizard-step-icon {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.08);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all 0.3s ease;
+      }
+      
+      .upload-wizard-step.current .upload-wizard-step-icon {
+        background: #12B76A;
+        animation: pulse 2s ease-in-out infinite;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(18, 183, 106, 0.4); }
+        50% { box-shadow: 0 0 0 8px rgba(18, 183, 106, 0); }
+      }
+      
+      .upload-wizard-step-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: rgba(255,255,255,0.5);
+        white-space: nowrap;
+      }
+      
+      .upload-wizard-step.current .upload-wizard-step-label {
+        color: #12B76A;
+        font-weight: 600;
+      }
+      
+      .upload-wizard-step.done .upload-wizard-step-label {
+        color: rgba(255,255,255,0.3);
+      }
+      
+      .upload-wizard-connector {
+        width: 24px;
+        height: 2px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 1px;
+      }
+      
+      .upload-wizard-dismiss {
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.3);
+        font-size: 13px;
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: 8px;
+        transition: all 0.2s;
+        margin-left: 8px;
+      }
+      
+      .upload-wizard-dismiss:hover {
+        color: rgba(255,255,255,0.6);
+        background: rgba(255,255,255,0.05);
+      }
+      
+      /* ========== COMPLETION MODAL ========== */
+      .upload-wizard-modal-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0);
+        backdrop-filter: blur(0px);
+        transition: all 0.3s ease;
+        padding: 20px;
+      }
+      
+      .upload-wizard-modal-overlay.visible {
+        background: rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(8px);
+      }
+      
+      .upload-wizard-modal {
+        background: linear-gradient(145deg, #1e1e1e 0%, #121212 100%);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 24px;
+        padding: 40px;
+        max-width: 450px;
+        text-align: center;
+        transform: scale(0.9) translateY(20px);
+        opacity: 0;
+        transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: 0 25px 80px rgba(0,0,0,0.5);
+      }
+      
+      .upload-wizard-modal-overlay.visible .upload-wizard-modal {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+      }
+      
+      .upload-wizard-modal-icon {
+        font-size: 64px;
+        margin-bottom: 20px;
+      }
+      
+      .upload-wizard-modal-title {
+        font-size: 24px;
+        font-weight: 700;
+        color: white;
+        margin: 0 0 16px;
+      }
+      
+      .upload-wizard-modal-text {
+        font-size: 15px;
+        color: rgba(255,255,255,0.6);
+        line-height: 1.6;
+        margin: 0 0 20px;
+      }
+      
+      .upload-wizard-modal-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 8px;
+      }
+      
+      .upload-wizard-modal-btn {
+        border: none;
+        border-radius: 12px;
+        padding: 14px 24px;
         font-size: 15px;
         font-weight: 600;
-        box-shadow: 0 10px 30px rgba(18, 183, 106, 0.3);
-        transition: bottom 0.3s ease-out;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        width: 100%;
       }
       
-      .upload-success-toast.visible {
-        bottom: 24px;
+      .upload-wizard-modal-btn--primary {
+        background: linear-gradient(135deg, #12B76A 0%, #0EA55E 100%);
+        color: white;
       }
       
-      .upload-success-icon {
-        font-size: 20px;
+      .upload-wizard-modal-btn--primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(18, 183, 106, 0.4);
+      }
+      
+      .upload-wizard-modal-btn--secondary {
+        background: rgba(255,255,255,0.05);
+        color: rgba(255,255,255,0.6);
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      
+      .upload-wizard-modal-btn--secondary:hover {
+        background: rgba(255,255,255,0.1);
+        color: white;
+      }
+      
+      .upload-wizard-modal-btn--danger {
+        background: rgba(239, 68, 68, 0.1);
+        color: #EF4444;
+        border: 1px solid rgba(239, 68, 68, 0.2);
+      }
+      
+      .upload-wizard-modal-btn--danger:hover {
+        background: #EF4444;
+        color: white;
+      }
+      
+      /* ========== RESPONSIVE ========== */
+      @media (max-width: 900px) {
+        .upload-wizard-header {
+          display: none;
+        }
+        
+        .upload-wizard-step-label {
+          display: none;
+        }
+        
+        .upload-wizard-step {
+          padding: 8px;
+        }
+        
+        .upload-wizard-content {
+          padding: 12px 16px;
+          gap: 12px;
+        }
       }
     `
     document.head.appendChild(style)

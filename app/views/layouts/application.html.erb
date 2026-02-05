@@ -26,7 +26,7 @@
   <% guided_onboarding_completed = Current.user.preferences&.dig('guided_onboarding_completed') == true %>
   <div
     class="flex flex-col lg:flex-row h-full bg-surface"
-    data-controller="app-layout tour guided-onboarding"
+    data-controller="app-layout tour guided-onboarding upload-tour"
     data-tour-target="welcome"
     data-app-layout-expanded-sidebar-class="<%= expanded_sidebar_class %>"
     data-app-layout-collapsed-sidebar-class="<%= collapsed_sidebar_class %>"
