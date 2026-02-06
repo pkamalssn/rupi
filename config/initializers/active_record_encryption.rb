@@ -1,6 +1,7 @@
-# Auto-generate Active Record encryption keys for self-hosted instances
+# Auto-generate Active Record encryption keys when not configured
 # This ensures encryption works out of the box without manual setup
-if Rails.application.config.app_mode.self_hosted? && !Rails.application.credentials.active_record_encryption.present?
+# Works for both self-hosted and managed modes when credentials are missing
+unless Rails.application.credentials.active_record_encryption.present?
   # Check if keys are provided via environment variables
   primary_key = ENV["ACTIVE_RECORD_ENCRYPTION_PRIMARY_KEY"]
   deterministic_key = ENV["ACTIVE_RECORD_ENCRYPTION_DETERMINISTIC_KEY"]
