@@ -115,9 +115,9 @@
         </script>
 
         <!-- Submit Button -->
-        <div class="flex gap-3">
-          <%= f.submit "Upload & Import", class: "flex-1 px-4 py-2 bg-accent text-white rounded-lg hover:bg-accent/90 font-medium focus:outline-none focus:ring-2 focus:ring-accent" %>
-          <%= link_to "Cancel", imports_path, class: "px-4 py-2 border border-primary rounded-lg text-primary hover:bg-container" %>
+        <div class="flex gap-3 mt-4">
+          <%= f.submit "Upload & Import", class: "flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 font-semibold text-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 focus:ring-offset-gray-900 shadow-lg shadow-green-500/25 transition-all duration-200" %>
+          <%= link_to "Cancel", imports_path, class: "px-6 py-3 border border-gray-600 rounded-xl text-gray-400 hover:bg-gray-800 hover:text-white transition-all duration-200" %>
         </div>
       </div>
     <% end %>

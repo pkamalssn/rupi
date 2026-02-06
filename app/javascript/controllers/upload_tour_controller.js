@@ -1,8 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
 
-// Upload Wizard Tour Controller v3
-// Persistent, prominent floating progress bar that follows the entire upload lifecycle
-// Tracks: Bank Selection → File Upload → Processing → Success
+// Upload Wizard Tour Controller v4
+// Simplified flow: Bank → File+Submit → Complete
+// Shows completion modal when user returns to dashboard after import
 export default class extends Controller {
   static values = {
     page: { type: String, default: "" }
@@ -10,11 +10,10 @@ export default class extends Controller {
 
   guideBar = null
   
-  // Steps displayed to user
+  // Steps displayed to user - simplified to 3 clear steps
   stepLabels = [
     { key: 'bank', label: 'Select Bank', icon: '🏦' },
-    { key: 'file', label: 'Upload File', icon: '📄' },
-    { key: 'process', label: 'Processing', icon: '⚙️' },
+    { key: 'upload', label: 'Upload & Submit', icon: '📄' },
     { key: 'complete', label: 'Complete', icon: '✅' }
   ]
 
@@ -38,20 +37,21 @@ export default class extends Controller {
       console.log('[UploadTour] Attached bank select listener')
     }
     
-    // Listen for file selection
+    // Listen for file selection - just visual feedback, doesn't complete step
     this.fileSelectHandler = this.onFileSelected.bind(this)
-    const fileInputs = document.querySelectorAll('input[type="file"]')
+    const fileInputs = document.querySelectorAll('input[type=\"file\"]')
     fileInputs.forEach(input => {
       input.addEventListener('change', this.fileSelectHandler)
     })
     if (fileInputs.length) console.log('[UploadTour] Attached file input listeners')
     
-    // Listen for form submissions (processing step)
+    // Listen for form submissions - THIS completes the upload step
     this.formSubmitHandler = this.onFormSubmit.bind(this)
-    const forms = document.querySelectorAll('form[action*="import"], form[action*="upload"]')
+    const forms = document.querySelectorAll('form[action*=\"bank_statement\"], form[action*=\"import\"]')
     forms.forEach(form => {
       form.addEventListener('submit', this.formSubmitHandler)
     })
+    if (forms.length) console.log('[UploadTour] Attached form submit listeners')
   }
 
   removeEventListeners() {
@@ -60,7 +60,7 @@ export default class extends Controller {
       bankSelect.removeEventListener('change', this.bankSelectHandler)
     }
     
-    const fileInputs = document.querySelectorAll('input[type="file"]')
+    const fileInputs = document.querySelectorAll('input[type=\"file\"]')
     fileInputs.forEach(input => {
       if (this.fileSelectHandler) {
         input.removeEventListener('change', this.fileSelectHandler)
@@ -79,17 +79,45 @@ export default class extends Controller {
   }
 
   onFileSelected(e) {
+    // File selection gives visual feedback but doesn't complete the step
+    // User still needs to click "Upload & Import" to complete
     console.log('[UploadTour] File selected:', e.target.files?.length)
     if (e.target.files?.length > 0) {
-      this.markStepDone('file')
-      this.refreshGuideBar()
+      // Just update UI to show file is ready, don't mark step done
+      this.showFileReadyHint()
+    }
+  }
+
+  showFileReadyHint() {
+    // Find the current step indicator and add a "ready" state
+    const uploadStep = this.guideBar?.querySelector('.upload-wizard-step:nth-child(3)')
+    if (uploadStep && !uploadStep.classList.contains('done')) {
+      uploadStep.classList.add('ready')
     }
   }
 
   onFormSubmit(e) {
-    console.log('[UploadTour] Form submitted, marking process step')
-    this.markStepDone('process')
-    this.saveTourState({ ...this.getTourState(), inProgress: true })
+    console.log('[UploadTour] Form submitted - marking upload step complete')
+    this.markStepDone('bank')  // Ensure bank is marked
+    this.markStepDone('upload') // Mark upload complete
+    
+    // Save state indicating import is in progress
+    this.saveTourState({ 
+      ...this.getTourState(), 
+      importStarted: true,
+      importStartedAt: Date.now()
+    })
+    
+    // Hide the wizard bar during import flow - the import UI has its own progress
+    this.hideGuideBar()
+  }
+
+  hideGuideBar() {
+    const bar = document.querySelector('.upload-wizard-bar')
+    if (bar) {
+      bar.classList.remove('visible')
+      setTimeout(() => bar.remove(), 400)
+    }
   }
 
   // ============ GUIDE BAR DISPLAY ============
@@ -106,22 +134,34 @@ export default class extends Controller {
     const path = window.location.pathname
     console.log('[UploadTour] Current path:', path)
     
-    // Track which step we're on based on URL
-    if (path.includes('/bank_statement/new')) {
-      this.showGuideBar('bank')
-    } else if (path.includes('/imports/') && path.includes('/upload')) {
-      this.markStepDone('bank')
-      this.showGuideBar('file')
-    } else if (path.includes('/imports/') && (path.includes('/configuration') || path.includes('/clean') || path.includes('/confirm'))) {
-      this.markStepDone('bank')
-      this.markStepDone('file')
-      this.showGuideBar('process')
-    } else if ((path === '/' || path.includes('/dashboard') || path.includes('/transactions')) && tourData.completedSteps?.includes('process')) {
-      // User completed upload and is back at dashboard
+    // Check if user just completed an import and is back on dashboard
+    if ((path === '/' || path.includes('/dashboard')) && tourData.importStarted) {
+      // User is back on dashboard after starting an import - show completion!
+      console.log('[UploadTour] User returned to dashboard after import - showing completion')
       this.showCompletionModal()
       this.completeTour()
-    } else if (tourData.active && tourData.completedSteps?.length > 0) {
-      // Show guide bar on any page if tour is active
+      return
+    }
+    
+    // Don't show wizard on import processing pages - they have their own UI
+    if (path.includes('/imports/')) {
+      console.log('[UploadTour] On import page, hiding wizard (import UI handles this)')
+      return
+    }
+    
+    // Show wizard on bank statement upload page
+    if (path.includes('/bank_statement/new')) {
+      const completedSteps = tourData.completedSteps || []
+      if (completedSteps.includes('bank')) {
+        this.showGuideBar('upload')
+      } else {
+        this.showGuideBar('bank')
+      }
+      return
+    }
+    
+    // On other pages with active tour, show current step
+    if (tourData.active && tourData.completedSteps?.length > 0) {
       this.showGuideBar(this.getCurrentStep())
     }
   }
@@ -153,11 +193,19 @@ export default class extends Controller {
       `
     }).join('')
     
+    // Add contextual hint based on current step
+    let hint = ''
+    if (currentStepKey === 'bank') {
+      hint = 'Choose your bank from the dropdown above'
+    } else if (currentStepKey === 'upload') {
+      hint = 'Select your PDF/Excel file, then click the green "Upload & Import" button'
+    }
+    
     this.guideBar.innerHTML = `
       <div class="upload-wizard-content">
         <div class="upload-wizard-header">
           <span class="upload-wizard-title">📥 Upload Wizard</span>
-          <span class="upload-wizard-subtitle">Follow these steps to import your statement</span>
+          <span class="upload-wizard-subtitle">${hint || 'Follow these steps to import your statement'}</span>
         </div>
         <div class="upload-wizard-steps">
           ${stepsHtml}
@@ -208,8 +256,8 @@ export default class extends Controller {
         <div class="upload-wizard-modal-icon">🎉</div>
         <h3 class="upload-wizard-modal-title">Statement Imported!</h3>
         <p class="upload-wizard-modal-text">
-          Your transactions have been imported and categorized. 
-          You can now explore your real financial data!
+          Your transactions have been imported and categorized by AI. 
+          Check your accounts in the sidebar to explore your data!
         </p>
         <p class="upload-wizard-modal-text" style="font-size: 14px; color: rgba(255,255,255,0.5);">
           Want to clear the sample data loaded earlier?
@@ -301,10 +349,10 @@ export default class extends Controller {
   // ============ STYLES ============
   
   injectStyles() {
-    if (document.getElementById('upload-wizard-styles-v3')) return
+    if (document.getElementById('upload-wizard-styles-v4')) return
     
     const style = document.createElement('style')
-    style.id = 'upload-wizard-styles-v3'
+    style.id = 'upload-wizard-styles-v4'
     style.textContent = `
       /* ========== FLOATING PROGRESS BAR ========== */
       .upload-wizard-bar {
@@ -341,6 +389,7 @@ export default class extends Controller {
         gap: 2px;
         border-right: 1px solid rgba(255,255,255,0.1);
         padding-right: 20px;
+        min-width: 200px;
       }
       
       .upload-wizard-title {
@@ -352,8 +401,8 @@ export default class extends Controller {
       
       .upload-wizard-subtitle {
         font-size: 12px;
-        color: rgba(255,255,255,0.4);
-        white-space: nowrap;
+        color: rgba(255,255,255,0.6);
+        max-width: 200px;
       }
       
       .upload-wizard-steps {
@@ -377,6 +426,11 @@ export default class extends Controller {
         background: rgba(18, 183, 106, 0.15);
         border-color: rgba(18, 183, 106, 0.4);
         box-shadow: 0 0 20px rgba(18, 183, 106, 0.2);
+      }
+      
+      .upload-wizard-step.ready {
+        background: rgba(251, 191, 36, 0.15);
+        border-color: rgba(251, 191, 36, 0.4);
       }
       
       .upload-wizard-step.done {
