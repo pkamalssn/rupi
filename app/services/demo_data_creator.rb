@@ -41,6 +41,10 @@ class DemoDataCreator
       create_loans
       create_investments
       
+      # Materialize balances for all accounts so charts have data
+      # Without this, the net worth chart shows 0 because it queries the balances table
+      materialize_account_balances
+      
       # Mark that this family has demo data loaded
       @family.update!(demo_data_loaded: true) if @family.respond_to?(:demo_data_loaded=)
     end
@@ -79,6 +83,41 @@ class DemoDataCreator
   end
 
   private
+
+  # Materialize balance records for all accounts so charts work
+  def materialize_account_balances
+    @family.accounts.reload.each do |account|
+      Rails.logger.info "[DemoDataCreator] Materializing balances for #{account.name}"
+      begin
+        Balance::Materializer.new(account, strategy: :forward).materialize_balances
+      rescue => e
+        Rails.logger.warn "[DemoDataCreator] Balance materialization failed for #{account.name}: #{e.message}"
+        # Create a simple balance record as fallback
+        create_simple_balance(account)
+      end
+    end
+  end
+
+  # Fallback: Create a simple balance record if materializer fails
+  def create_simple_balance(account)
+    flows_factor = account.classification == "liability" ? -1 : 1
+    account.balances.create!(
+      date: Date.current,
+      balance: account.balance,
+      cash_balance: account.balance,
+      currency: account.currency,
+      start_cash_balance: account.balance,
+      start_non_cash_balance: 0,
+      cash_inflows: 0,
+      cash_outflows: 0,
+      non_cash_inflows: 0,
+      non_cash_outflows: 0,
+      net_market_flows: 0,
+      cash_adjustments: 0,
+      non_cash_adjustments: 0,
+      flows_factor: flows_factor
+    )
+  end
 
   def create_categories
     DEMO_CATEGORIES.each do |cat|
