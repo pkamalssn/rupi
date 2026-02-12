@@ -261,63 +261,66 @@ class DemoDataCreator
   end
 
   # ============ TRANSACTION DATA ============
+  # RUPI convention: positive amount = expense/outflow, negative amount = income/inflow
   def create_hdfc_transactions(account)
-    # Last 2 months of transactions
+    # Last 2 months of transactions (all expenses = positive amounts)
     [
-      { days: 2, name: "Swiggy Order", amount: -485, cat: "Food & Dining" },
-      { days: 5, name: "Amazon Purchase", amount: -2899, cat: "Shopping" },
-      { days: 7, name: "Uber Ride", amount: -325, cat: "Transportation" },
-      { days: 10, name: "Netflix Subscription", amount: -649, cat: "Entertainment" },
-      { days: 12, name: "Electricity Bill - TANGEDCO", amount: -1850, cat: "Utilities" },
-      { days: 15, name: "Zomato Order", amount: -380, cat: "Food & Dining" },
-      { days: 18, name: "Flipkart Purchase", amount: -1599, cat: "Shopping" },
-      { days: 20, name: "Mobile Recharge - Jio", amount: -299, cat: "Utilities" },
-      { days: 25, name: "Health Checkup - Apollo", amount: -2500, cat: "Healthcare" },
-      { days: 30, name: "Rapido Auto", amount: -120, cat: "Transportation" },
-      { days: 35, name: "Groceries - BigBasket", amount: -3200, cat: "Food & Dining" },
-      { days: 40, name: "DMart Shopping", amount: -1850, cat: "Shopping" },
-      { days: 45, name: "Ola Ride", amount: -450, cat: "Transportation" },
-      { days: 50, name: "Disney+ Hotstar", amount: -299, cat: "Entertainment" }
+      { days: 2, name: "Swiggy Order", amount: 485, cat: "Food & Dining" },
+      { days: 5, name: "Amazon Purchase", amount: 2899, cat: "Shopping" },
+      { days: 7, name: "Uber Ride", amount: 325, cat: "Transportation" },
+      { days: 10, name: "Netflix Subscription", amount: 649, cat: "Entertainment" },
+      { days: 12, name: "Electricity Bill - TANGEDCO", amount: 1850, cat: "Utilities" },
+      { days: 15, name: "Zomato Order", amount: 380, cat: "Food & Dining" },
+      { days: 18, name: "Flipkart Purchase", amount: 1599, cat: "Shopping" },
+      { days: 20, name: "Mobile Recharge - Jio", amount: 299, cat: "Utilities" },
+      { days: 25, name: "Health Checkup - Apollo", amount: 2500, cat: "Healthcare" },
+      { days: 30, name: "Rapido Auto", amount: 120, cat: "Transportation" },
+      { days: 35, name: "Groceries - BigBasket", amount: 3200, cat: "Food & Dining" },
+      { days: 40, name: "DMart Shopping", amount: 1850, cat: "Shopping" },
+      { days: 45, name: "Ola Ride", amount: 450, cat: "Transportation" },
+      { days: 50, name: "Disney+ Hotstar", amount: 299, cat: "Entertainment" }
     ].each do |txn|
       create_entry(account, date: txn[:days].days.ago.to_date, name: txn[:name], amount: txn[:amount], category_name: txn[:cat])
     end
   end
 
   def create_sbi_transactions(account)
-    # Salary credits and rent
+    # Salary credits (income = negative) and expenses (positive)
     [
-      { days: 1, name: "Salary Credit - TCS", amount: 95000, cat: "Salary" },
-      { days: 5, name: "Rent Payment - UPI", amount: -25000, cat: "Rent" },
-      { days: 8, name: "SBI Home Loan EMI", amount: -42500, cat: "EMI Payments" },
-      { days: 10, name: "PPF Investment", amount: -12500, cat: "Investments" },
-      { days: 31, name: "Salary Credit - TCS", amount: 95000, cat: "Salary" },
-      { days: 35, name: "Rent Payment - UPI", amount: -25000, cat: "Rent" },
-      { days: 38, name: "SBI Home Loan EMI", amount: -42500, cat: "EMI Payments" },
-      { days: 40, name: "PPF Investment", amount: -12500, cat: "Investments" },
-      { days: 45, name: "FD Interest Credit", amount: 1250, cat: "Interest Income" }
+      { days: 1, name: "Salary Credit - TCS", amount: -95000, cat: "Salary" },
+      { days: 5, name: "Rent Payment - UPI", amount: 25000, cat: "Rent" },
+      { days: 8, name: "SBI Home Loan EMI", amount: 42500, cat: "EMI Payments" },
+      { days: 10, name: "PPF Investment", amount: 12500, cat: "Investments" },
+      { days: 31, name: "Salary Credit - TCS", amount: -95000, cat: "Salary" },
+      { days: 35, name: "Rent Payment - UPI", amount: 25000, cat: "Rent" },
+      { days: 38, name: "SBI Home Loan EMI", amount: 42500, cat: "EMI Payments" },
+      { days: 40, name: "PPF Investment", amount: 12500, cat: "Investments" },
+      { days: 45, name: "FD Interest Credit", amount: -1250, cat: "Interest Income" }
     ].each do |txn|
       create_entry(account, date: txn[:days].days.ago.to_date, name: txn[:name], amount: txn[:amount], category_name: txn[:cat])
     end
   end
 
   def create_hdfc_cc_transactions(account)
+    # Credit card spends (expenses = positive amounts)
     [
-      { days: 3, name: "Myntra Fashion", amount: -3499, cat: "Shopping" },
-      { days: 8, name: "Barbeque Nation", amount: -2800, cat: "Food & Dining" },
-      { days: 15, name: "Spotify Premium", amount: -119, cat: "Entertainment" },
-      { days: 20, name: "Reliance Digital", amount: -8999, cat: "Shopping" },
-      { days: 28, name: "Dominos Pizza", amount: -650, cat: "Food & Dining" }
+      { days: 3, name: "Myntra Fashion", amount: 3499, cat: "Shopping" },
+      { days: 8, name: "Barbeque Nation", amount: 2800, cat: "Food & Dining" },
+      { days: 15, name: "Spotify Premium", amount: 119, cat: "Entertainment" },
+      { days: 20, name: "Reliance Digital", amount: 8999, cat: "Shopping" },
+      { days: 28, name: "Dominos Pizza", amount: 650, cat: "Food & Dining" }
     ].each do |txn|
       create_entry(account, date: txn[:days].days.ago.to_date, name: txn[:name], amount: txn[:amount], category_name: txn[:cat])
     end
   end
 
   def create_icici_cc_transactions(account)
+    # Credit card spends (expenses = positive amounts)
     [
-      { days: 4, name: "Amazon.in Purchase", amount: -4299, cat: "Shopping" },
-      { days: 12, name: "Amazon Prime", amount: -1499, cat: "Entertainment" },
-      { days: 22, name: "Amazon Pantry", amount: -1850, cat: "Food & Dining" },
-      { days: 35, name: "Amazon.in Purchase", amount: -2599, cat: "Shopping" }
+      { days: 4, name: "Amazon.in Purchase", amount: 4299, cat: "Shopping" },
+      { days: 12, name: "Amazon Prime", amount: 1499, cat: "Entertainment" },
+      { days: 22, name: "Amazon Pantry", amount: 1850, cat: "Food & Dining" },
+      { days: 35, name: "Amazon.in Purchase", amount: 2599, cat: "Shopping" }
     ].each do |txn|
       create_entry(account, date: txn[:days].days.ago.to_date, name: txn[:name], amount: txn[:amount], category_name: txn[:cat])
     end
