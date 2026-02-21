@@ -239,13 +239,25 @@ class DemoDataCreator
       Investment.create!
     end
 
-    @family.accounts.create!(
+    account = @family.accounts.create!(
       name: name,
       currency: @currency,
       balance: balance,
       accountable: accountable,
       status: :active
     )
+
+    # Create an opening anchor valuation so ForwardCalculator knows the starting balance
+    # Without this, balance materialization starts from 0 and expense-only accounts go negative
+    account.entries.create!(
+      date: 60.days.ago.to_date,
+      name: Valuation.build_opening_anchor_name(accountable.class.name),
+      amount: balance,
+      currency: @currency,
+      entryable: Valuation.new(kind: "opening_anchor")
+    )
+
+    account
   end
 
   def create_entry(account, date:, name:, amount:, category_name: nil)
