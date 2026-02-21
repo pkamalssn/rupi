@@ -2,7 +2,7 @@
 
 ### Personal Finance Dashboard for India
 
-**Version 3.3.13** · **🔒 Security Hardened** · **🚀 Production Ready**
+**Version 3.4.0-beta** · **🔒 Security Hardened** · **🚀 Beta Launch**
 
 A clean, open-source frontend for managing your personal finances. Track accounts, view transactions, analyze spending patterns, and visualize your financial health — all designed for the Indian context.
 

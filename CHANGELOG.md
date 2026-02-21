@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [3.4.0-beta] - 2026-02-22
+
+### 🚀 Beta Launch Release
+
+**Onboarding Flow Fixes:**
+
+- Fixed Active Record encryption error blocking bank statement uploads in managed mode
+- Upload Wizard v4: Simplified to 3 clear steps (Bank → Upload & Submit → Complete)
+- Fixed premature "Processing" indicator — now triggers only on actual form submission
+- Wizard hides during import flow (existing import UI handles progress)
+- Completion modal with "Clear Sample Data" option when user returns to dashboard
+- Made "Upload & Import" button prominent green with gradient and shadow
+
+**Net Worth & Sample Data Fixes:**
+
+- Fixed Net Worth showing ₹0 — now materializes Balance records for demo accounts
+- Fixed inverted sign convention: salary was treated as outflow, expenses as inflow
+- Fixed HDFC negative balance — added opening anchor valuations for demo accounts
+- All demo accounts now show realistic positive balances
+
+**Beta Cleanup:**
+
+- Removed 33 debug console.log statements from production JS
+- Fixed "Clear Sample Data" button (route expects DELETE, was sending POST)
+- Version bumped to 3.4.0-beta
+
+---
+
 ## [3.3.19] - 2026-02-02
 
 ### Added - Guided Action Onboarding 🎓

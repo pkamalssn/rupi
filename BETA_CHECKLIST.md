@@ -1,8 +1,8 @@
 # 📋 RUPI Beta Release Checklist
 
-> Last Updated: February 2, 2026
-> Target Version: v3.4.0 (Beta)
-> Current Version: v3.3.19
+> Last Updated: February 22, 2026
+> Target Version: v3.4.0-beta ✅ RELEASED
+> Current Version: v3.4.0-beta
 
 ---
 
@@ -232,4 +232,4 @@ AI_COOLDOWN_SECONDS = 5     # Change this for different cooldowns
 - Beta target: 30 active users
 - Estimated monthly AI cost: $10-15
 - Rate limits can be increased based on usage patterns
-- Encryption keys auto-generated for self-hosted mode
+- Encryption keys auto-generated for ALL modes (self-hosted and managed)
