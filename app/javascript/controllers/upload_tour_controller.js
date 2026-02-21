@@ -18,7 +18,7 @@ export default class extends Controller {
   ]
 
   connect() {
-    console.log('[UploadTour] Controller connected, checking tour state...')
+
     this.checkAndShowGuide()
     this.setupEventListeners()
   }
@@ -34,7 +34,7 @@ export default class extends Controller {
     const bankSelect = document.querySelector('[data-upload-tour="bank-select"], select[name*="bank"]')
     if (bankSelect) {
       bankSelect.addEventListener('change', this.bankSelectHandler)
-      console.log('[UploadTour] Attached bank select listener')
+
     }
     
     // Listen for file selection - just visual feedback, doesn't complete step
@@ -43,7 +43,7 @@ export default class extends Controller {
     fileInputs.forEach(input => {
       input.addEventListener('change', this.fileSelectHandler)
     })
-    if (fileInputs.length) console.log('[UploadTour] Attached file input listeners')
+
     
     // Listen for form submissions - THIS completes the upload step
     this.formSubmitHandler = this.onFormSubmit.bind(this)
@@ -51,7 +51,7 @@ export default class extends Controller {
     forms.forEach(form => {
       form.addEventListener('submit', this.formSubmitHandler)
     })
-    if (forms.length) console.log('[UploadTour] Attached form submit listeners')
+
   }
 
   removeEventListeners() {
@@ -71,7 +71,7 @@ export default class extends Controller {
   // ============ EVENT HANDLERS ============
   
   onBankSelected(e) {
-    console.log('[UploadTour] Bank selected:', e.target.value)
+
     if (e.target.value) {
       this.markStepDone('bank')
       this.refreshGuideBar()
@@ -81,7 +81,7 @@ export default class extends Controller {
   onFileSelected(e) {
     // File selection gives visual feedback but doesn't complete the step
     // User still needs to click "Upload & Import" to complete
-    console.log('[UploadTour] File selected:', e.target.files?.length)
+
     if (e.target.files?.length > 0) {
       // Just update UI to show file is ready, don't mark step done
       this.showFileReadyHint()
@@ -97,7 +97,7 @@ export default class extends Controller {
   }
 
   onFormSubmit(e) {
-    console.log('[UploadTour] Form submitted - marking upload step complete')
+
     this.markStepDone('bank')  // Ensure bank is marked
     this.markStepDone('upload') // Mark upload complete
     
@@ -124,20 +124,20 @@ export default class extends Controller {
   
   checkAndShowGuide() {
     const tourData = this.getTourState()
-    console.log('[UploadTour] Tour state:', tourData)
+
     
     if (!tourData?.active) {
-      console.log('[UploadTour] Tour not active, skipping')
+
       return
     }
     
     const path = window.location.pathname
-    console.log('[UploadTour] Current path:', path)
+
     
     // Check if user just completed an import and is back on dashboard
     if ((path === '/' || path.includes('/dashboard')) && tourData.importStarted) {
       // User is back on dashboard after starting an import - show completion!
-      console.log('[UploadTour] User returned to dashboard after import - showing completion')
+
       this.showCompletionModal()
       this.completeTour()
       return
@@ -145,7 +145,7 @@ export default class extends Controller {
     
     // Don't show wizard on import processing pages - they have their own UI
     if (path.includes('/imports/')) {
-      console.log('[UploadTour] On import page, hiding wizard (import UI handles this)')
+
       return
     }
     
@@ -295,10 +295,15 @@ export default class extends Controller {
           <h3 class="upload-wizard-modal-title">Clearing Sample Data...</h3>
         </div>
       `
-      // Submit form to clear demo data
+      // Submit form to clear demo data (route is DELETE)
       const form = document.createElement('form')
       form.method = 'POST'
       form.action = '/clear_demo_data'
+      const methodInput = document.createElement('input')
+      methodInput.type = 'hidden'
+      methodInput.name = '_method'
+      methodInput.value = 'delete'
+      form.appendChild(methodInput)
       const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content
       if (csrfToken) {
         const input = document.createElement('input')
@@ -335,14 +340,14 @@ export default class extends Controller {
     if (!state.completedSteps) state.completedSteps = []
     if (!state.completedSteps.includes(stepKey)) {
       state.completedSteps.push(stepKey)
-      console.log('[UploadTour] Marked step done:', stepKey, 'All:', state.completedSteps)
+
     }
     state.lastStep = stepKey
     this.saveTourState(state)
   }
 
   completeTour() {
-    console.log('[UploadTour] Completing tour')
+
     localStorage.removeItem('rupi_upload_tour')
   }
 

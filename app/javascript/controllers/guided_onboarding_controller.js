@@ -18,10 +18,6 @@ export default class extends Controller {
   }
 
   connect() {
-    console.log('[Onboarding] Controller connected')
-    console.log('[Onboarding] userId:', this.userIdValue)
-    console.log('[Onboarding] dismissedValue:', this.dismissedValue)
-    console.log('[Onboarding] hasAccountsValue:', this.hasAccountsValue)
     this.checkAndShowOnboarding()
   }
 
@@ -30,33 +26,19 @@ export default class extends Controller {
   }
 
   checkAndShowOnboarding() {
-    console.log('[Onboarding] checkAndShowOnboarding called')
-    
     // Skip if server says dismissed
-    if (this.dismissedValue) {
-      console.log('[Onboarding] Skipped: dismissedValue is true (server preference)')
-      return
-    }
+    if (this.dismissedValue) return
     
     // Skip if localStorage says complete for THIS USER
     const completed = localStorage.getItem(this.storageKey)
-    console.log('[Onboarding] localStorage key:', this.storageKey, '=', completed)
-    if (completed === 'true') {
-      console.log('[Onboarding] Skipped: localStorage says complete for this user')
-      return
-    }
+    if (completed === 'true') return
     
     // Skip if user already has accounts
-    const hasAccounts = this.hasAccountsValue
-    console.log('[Onboarding] hasAccounts:', hasAccounts)
-    
-    if (hasAccounts) {
-      console.log('[Onboarding] Skipped: has accounts, marking complete for this user')
+    if (this.hasAccountsValue) {
       localStorage.setItem(this.storageKey, 'true')
       return
     }
     
-    console.log('[Onboarding] All checks passed, showing welcome in 600ms')
     setTimeout(() => this.showWelcome(), 600)
   }
 

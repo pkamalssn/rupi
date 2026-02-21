@@ -417,17 +417,13 @@ export default class extends Controller {
 
     const target = document.querySelector(step.element)
     
-    console.log(`[Tour] Step ${this.currentStep + 1}: Looking for "${step.element}"`)
-    console.log(`[Tour] Target found:`, target)
     
     if (!target || !this.isVisible(target)) {
-      console.log(`[Tour] Skipping step ${this.currentStep + 1} - element not visible: ${step.element}`)
       this.currentStep++
       return this.showStep()
     }
     
     const rect = target.getBoundingClientRect()
-    console.log(`[Tour] Target rect:`, { left: rect.left, top: rect.top, width: rect.width, height: rect.height })
 
     // For center position, cover entire screen
     if (step.positions[0] === 'center') {
@@ -619,13 +615,11 @@ export default class extends Controller {
         this.tooltip.style.left = `${coords.left}px`
         this.tooltip.style.top = `${coords.top}px`
         this.tooltip.style.visibility = 'visible'
-        console.log(`[Tour] Step ${this.currentStep + 1}: Using position "${position}"`)
         return
       }
     }
     
     // Fallback: center on screen
-    console.log(`[Tour] Step ${this.currentStep + 1}: Fallback to center`)
     this.tooltip.style.left = `${(window.innerWidth - tooltipWidth) / 2}px`
     this.tooltip.style.top = `${(window.innerHeight - tooltipHeight) / 2}px`
     this.tooltip.style.visibility = 'visible'
@@ -764,7 +758,6 @@ export default class extends Controller {
         })
       })
     } catch (e) {
-      console.log("Could not save tour preference")
     }
   }
 }
